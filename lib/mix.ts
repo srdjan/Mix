@@ -1,5 +1,5 @@
 // mod.ts
-import { type, scope } from "arktype";
+import { type, scope, match } from "arktype";
 
 export type { Infer } from "arktype";
 
@@ -13,17 +13,17 @@ type Next = () => Promise<void>;
 type Middleware<T extends Context = Context> = (ctx: T, next: Next) => Promise<void>;
 type Handler<T extends Context = Context> = (ctx: T) => Promise<void> | void;
 
-// Validation helper with proper result type
-const validate = <T>(schema: ReturnType<typeof type>) =>
-  (input: unknown): Result<T, string[]> => {
-    const result = schema(input);
-    return result.problems
-      ? { ok: false, error: result.problems }
-      : { ok: true, value: result.data as T };
-  };
-
-// Validation result type with proper error handling
+// Validation result type
 type ValidationResult<T> = Result<T, string[]>;
+
+// Enhanced validation with pattern matching
+const validate = <T>(schema: ReturnType<typeof type>, input: unknown): ValidationResult<T> => {
+  const result = schema(input);
+  return match(result)
+    .with({ problems: undefined }, () => ({ ok: true, value: result.data as T }))
+    .with({ problems: match.array() }, ({ problems }) => ({ ok: false, error: problems }))
+    .exhaustive();
+};
 
 // Resource links for HATEOAS
 type ResourceLinks = Record<string,
@@ -96,6 +96,21 @@ type WorkflowContext = Context & {
   };
 };
 
+// ======== PATTERN MATCHING UTILITIES ========
+
+// Result type pattern matching
+const handleResult = <T, E, R>(
+  result: Result<T, E>,
+  handlers: {
+    success: (value: T) => R;
+    failure: (error: E) => R;
+  }
+): R =>
+  match(result)
+    .with({ ok: true }, ({ value }) => handlers.success(value))
+    .with({ ok: false }, ({ error }) => handlers.failure(error))
+    .exhaustive();
+
 // ======== CORE FUNCTIONS ========
 
 // Response factory function (pure function instead of context method)
@@ -116,17 +131,33 @@ const createResponse = (
   });
 };
 
-// Safe JSON parser with explicit error handling
+// Safe JSON parser with explicit error handling and pattern matching
 const safeParseBody = async (request: Request): Promise<Result<unknown, Error>> => {
   try {
     const contentType = request.headers.get("content-type");
-    if (contentType?.includes("application/json")) {
-      const body = await request.json();
-      return { ok: true, value: body };
-    }
-    return { ok: false, error: new Error("Unsupported content type") };
+
+    return match(contentType)
+      .when(ct => ct?.includes("application/json"), async () => {
+        try {
+          const body = await request.json();
+          return { ok: true, value: body };
+        } catch (error) {
+          return {
+            ok: false,
+            error: error instanceof Error ? error : new Error(String(error))
+          };
+        }
+      })
+      .otherwise(() => ({
+        ok: false,
+        error: new Error("Unsupported content type")
+      }));
+
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error : new Error(String(error)) };
+    return {
+      ok: false,
+      error: error instanceof Error ? error : new Error(String(error))
+    };
   }
 };
 
@@ -169,57 +200,61 @@ const createRouter = () => {
 
   // Router functions
   const add = (method: string, path: string, handler: Middleware): void => {
-    // Static route optimization for exact matches
-    if (!path.includes(':') && !path.includes('*')) {
-      if (!staticRoutes.has(method)) {
-        staticRoutes.set(method, new Map());
-      }
-      staticRoutes.get(method)!.set(path, handler);
-      return;
-    }
-
-    // Dynamic routes with patterns
-    dynamicRoutes.push({
-      pattern: new URLPattern({ pathname: path, method }),
-      handler
-    });
+    // Pattern match on path type
+    match(path)
+      .when(p => !p.includes(':') && !p.includes('*'), () => {
+        // Static route optimization
+        if (!staticRoutes.has(method)) {
+          staticRoutes.set(method, new Map());
+        }
+        staticRoutes.get(method)!.set(path, handler);
+      })
+      .otherwise(() => {
+        // Dynamic routes with patterns
+        dynamicRoutes.push({
+          pattern: new URLPattern({ pathname: path, method }),
+          handler
+        });
+      });
   };
 
-  const match = (request: Request): { handler: Middleware; params: Record<string, string> } | null => {
+  const findMatch = (request: Request): { handler: Middleware; params: Record<string, string> } | null => {
     const url = new URL(request.url);
     const method = request.method;
     const path = url.pathname;
 
-    // Check static routes first (fast path)
-    if (staticRoutes.has(method) && staticRoutes.get(method)!.has(path)) {
-      return {
-        handler: staticRoutes.get(method)!.get(path)!,
-        params: {}
-      };
-    }
+    // Pattern match on route type
+    return match([method, path])
+      .when(
+        ([m, p]) => staticRoutes.has(m) && staticRoutes.get(m)!.has(p),
+        ([m, p]) => ({
+          handler: staticRoutes.get(m)!.get(p)!,
+          params: {}
+        })
+      )
+      .otherwise(([m, p]) => {
+        // Find first matching dynamic route
+        for (const route of dynamicRoutes) {
+          const match = route.pattern.exec({
+            pathname: p,
+            method: m
+          });
 
-    // Check dynamic routes
-    for (const route of dynamicRoutes) {
-      const match = route.pattern.exec({
-        pathname: path,
-        method
+          if (match) {
+            return {
+              handler: route.handler,
+              params: match.pathname.groups
+            };
+          }
+        }
+        return null;
       });
-
-      if (match) {
-        return {
-          handler: route.handler,
-          params: match.pathname.groups
-        };
-      }
-    }
-
-    return null;
   };
 
   // Return router functions
   return {
     add,
-    match
+    match: findMatch
   };
 };
 
@@ -241,30 +276,30 @@ const assignTask = (instance: WorkflowInstance, task: WorkflowTransition["task"]
   tasks: [...instance.tasks, task]
 });
 
-// Apply transition to workflow (pure function)
+// Apply transition to workflow with pattern matching
 const applyTransition = (instance: WorkflowInstance, event: WorkflowEvent): WorkflowInstance => {
-  const transition = instance.definition.transitions.find(t =>
+  const matchingTransition = instance.definition.transitions.find(t =>
     t.from === instance.currentState && t.on === event
   );
 
-  if (!transition) {
-    return instance;
-  }
+  return match(matchingTransition)
+    .with(match.defined, (transition) => {
+      // Create new history entry
+      const historyEntry = {
+        from: transition.from,
+        to: transition.to,
+        at: new Date()
+      };
 
-  // Create new history entry
-  const historyEntry = {
-    from: transition.from,
-    to: transition.to,
-    at: new Date()
-  };
-
-  // Return new instance with updated state and history
-  return {
-    ...instance,
-    currentState: transition.to,
-    history: [...instance.history, historyEntry],
-    tasks: [...instance.tasks, transition.task]
-  };
+      // Return new instance with updated state and history
+      return {
+        ...instance,
+        currentState: transition.to,
+        history: [...instance.history, historyEntry],
+        tasks: [...instance.tasks, transition.task]
+      };
+    })
+    .otherwise(() => instance);
 };
 
 // ======== APP FACTORY ========
@@ -280,14 +315,25 @@ export const App = () => {
     const headerParams = Object.fromEntries(request.headers);
 
     // Initialize body with proper error handling
-    let bodyResult: ValidationResult<unknown> = { ok: true, value: null };
+    const bodyResult = match(request.method)
+      .when(
+        m => m === 'GET' || m === 'HEAD',
+        () => ({ ok: true, value: null } as ValidationResult<unknown>)
+      )
+      .otherwise(async () => {
+        const parsed = await safeParseBody(request);
+        return match(parsed)
+          .with({ ok: true }, ({ value }) => ({ ok: true, value } as ValidationResult<unknown>))
+          .with({ ok: false }, ({ error }) => ({ ok: false, error: [error.message] } as ValidationResult<unknown>))
+          .exhaustive();
+      });
 
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      const parsed = await safeParseBody(request);
-      bodyResult = parsed.ok
-        ? { ok: true, value: parsed.value }
-        : { ok: false, error: [parsed.error.message] };
-    }
+    // Use validate function to validate query params and headers
+    const headerSchema = type('record<string, string>');
+    const querySchema = type('record<string, string>');
+
+    const headerValidation = validate(headerSchema, headerParams);
+    const queryValidation = validate(querySchema, queryParams);
 
     return {
       request,
@@ -297,10 +343,10 @@ export const App = () => {
       }),
       state: {},
       validated: {
-        body: bodyResult,
+        body: await bodyResult,
         params: { ok: true, value: {} },
-        query: { ok: true, value: queryParams },
-        headers: { ok: true, value: headerParams }
+        query: queryValidation,
+        headers: headerValidation
       }
     };
   };
@@ -320,34 +366,35 @@ export const App = () => {
         }
       }
 
-      // Route matching
-      const match = router.match(request);
+      // Route matching with pattern matching
+      const routeMatch = router.match(request);
 
-      if (match) {
-        // Update params in context
-        ctx = {
-          ...ctx,
-          validated: {
-            ...ctx.validated,
-            params: { ok: true, value: match.params }
-          }
-        };
+      return match(routeMatch)
+        .with(match.defined, async (match) => {
+          // Update params in context using validate function
+          const paramsSchema = type('record<string, string>');
+          const paramsValidation = validate(paramsSchema, match.params);
 
-        // Execute route handler
-        await match.handler(ctx, () => Promise.resolve());
+          ctx = {
+            ...ctx,
+            validated: {
+              ...ctx.validated,
+              params: paramsValidation
+            }
+          };
 
-        // Return response if produced
-        if (ctx.response) {
-          return ctx.response;
-        }
-      }
+          // Execute route handler
+          await match.handler(ctx, () => Promise.resolve());
 
-      // No matching route or no response produced
-      return new Response("Not Found", { status: 404 });
+          // Return response if produced
+          return ctx.response || new Response("No response", { status: 204 });
+        })
+        .otherwise(() => new Response("Not Found", { status: 404 }));
+
     } catch (error) {
       console.error("Request handling error:", error);
       return new Response(
-        JSON.stringify({ error: "Internal Server Error" }),
+        JSON.stringify({ error: "Internal Server Error", details: String(error) }),
         {
           status: 500,
           headers: { "Content-Type": "application/json" }
@@ -369,30 +416,42 @@ export const App = () => {
     };
 
     const defineTransition = (config: WorkflowTransition) => {
-      const result = transitionSchema(config);
-      if (result.problems) throw new Error(`Invalid transition: ${result.problems.join(", ")}`);
+      const validation = validate(transitionSchema, config);
 
-      definition.transitions.push(config);
-      definition.states = Array.from(new Set([
-        ...definition.states,
-        config.from,
-        config.to
-      ]));
-      definition.events = Array.from(new Set([
-        ...definition.events,
-        config.on
-      ]));
+      return match(validation)
+        .with({ ok: true }, ({ value }) => {
+          // Update definition with new transition
+          definition.transitions.push(value);
+          definition.states = Array.from(new Set([
+            ...definition.states,
+            value.from,
+            value.to
+          ]));
+          definition.events = Array.from(new Set([
+            ...definition.events,
+            value.on
+          ]));
 
-      return engine;
+          return engine;
+        })
+        .with({ ok: false }, ({ error }) => {
+          throw new Error(`Invalid transition: ${error.join(", ")}`);
+        })
+        .exhaustive();
     };
 
     const load = (json: unknown) => {
-      const result = workflowDefinitionSchema(json);
-      if (result.problems) {
-        throw new Error(`Invalid workflow definition: ${result.problems.join(", ")}`);
-      }
-      definition = result.data;
-      return engine;
+      const validation = validate<WorkflowDefinition>(workflowDefinitionSchema, json);
+
+      return match(validation)
+        .with({ ok: true }, ({ value }) => {
+          definition = value;
+          return engine;
+        })
+        .with({ ok: false }, ({ error }) => {
+          throw new Error(`Invalid workflow definition: ${error.join(", ")}`);
+        })
+        .exhaustive();
     };
 
     const toJSON = (): WorkflowDefinition =>
@@ -512,7 +571,10 @@ export const App = () => {
       canTransition,
       getPendingTasks,
       assignTask,
-      applyTransition
+      applyTransition,
+      validate,
+      handleResult,
+      match
     }
   };
 
