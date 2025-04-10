@@ -1,5 +1,4 @@
-// product_api.ts
-import { App, type, scope, match } from "./mod.ts";
+import { App, scope } from "../../lib/mix.ts";
 
 // 1. Define Types & Validation
 const productSchema = scope({
@@ -12,8 +11,6 @@ const productSchema = scope({
     sku: /^[A-Z]{3}-\d{4}$/
   }
 }).compile();
-
-const skuSchema = type(/^[A-Z]{3}-\d{4}$/);
 
 type Product = typeof productSchema.infer;
 
@@ -39,12 +36,10 @@ app.use(async (ctx, next) => {
 
 app.use(async (ctx, next) => {
   const apiKey = ctx.request.headers.get("X-API-Key");
-
   if (apiKey !== Deno.env.get("API_KEY")) {
     utils.setStatus(ctx, 401);
     return utils.setResponse(ctx, utils.createResponse(ctx, { error: "Invalid API key" }));
   }
-
   await next();
 });
 

@@ -1,5 +1,4 @@
-// document_workflow.ts
-import { App, type, scope, match } from "./mod.ts";
+import { App, type } from "../../lib/mix.ts";
 
 // 1. Define Workflow Types
 type DocState = "Draft" | "Review" | "Approved" | "Rejected" | "Archived";
@@ -101,7 +100,6 @@ docWorkflow.load({
 
 // 6. Document Creation Handler with optimized mutation
 docWorkflow.createHandler("/documents", async (ctx) => {
-  // Validate document data with error handling
   if (!ctx.validated.body.ok) {
     utils.setStatus(ctx, 400);
     return utils.setResponse(ctx, utils.createResponse(ctx, {
@@ -146,7 +144,6 @@ docWorkflow.createHandler("/documents", async (ctx) => {
 
 // 7. Transition Handler
 docWorkflow.createHandler("/documents/:id/transitions", async (ctx) => {
-  // Performance optimization: Validate early and fail fast
   if (!ctx.validated.params.ok || !ctx.validated.body.ok) {
     utils.setStatus(ctx, 400);
     return utils.setResponse(ctx, utils.createResponse(ctx, {
@@ -223,7 +220,6 @@ docWorkflow.createHandler("/documents/:id/transitions", async (ctx) => {
           .filter(t => t.from === doc.state)
           .map(t => t.on);
 
-        // Return response
         return utils.setResponse(ctx, utils.createResponse(ctx, {
           currentState: doc.state,
           availableTransitions,
