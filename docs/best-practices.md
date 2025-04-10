@@ -1,331 +1,848 @@
-# Best Practices 🏗️
+# Mix Best Practices
 
-## Project Structure
+## Core Principles
 
-### Recommended Layout
+Mix's architecture balances performance optimization with functional programming principles. These best practices will help you create efficient, maintainable, and type-safe Mix applications.
 
-  ```ascii
+### Strategic Immutability
 
-  /src
-  │
-  ├── /api
-  │   ├── routes/         # API endpoints
-  │   │   ├── users.ts
-  │   │   └── products.ts
-  │   │
-  │   └── schemas/        # Validation schemas
-  │       ├── user.ts
-  │       └── product.ts
-  │
-  ├── /workflows
-  │   ├── definitions/    # JSON workflow configs
-  │   │   ├── ticket.json
-  │   │   └── approval.json
-  │   │
-  │   └── handlers/       # Transition handlers
-  │       ├── ticket.ts
-  │       └── approval.ts
-  │
-  ├── middleware/         # Shared middleware
-  │   ├── auth.ts
-  │   └── logging.ts
-  │
-  └── app.ts              # Main application setup
+Embrace controlled mutation for performance-critical paths while preserving immutability for domain logic:
 
-  ```
+```typescript
+// Performance-critical path: Use mutation
+utils.setStatus(ctx, 201);
+utils.setHeader(ctx, "Location", `/resources/${id}`);
 
-### Key Principles
+// Domain logic: Preserve immutability
+const calculateTotals = (items: OrderItem[]): OrderTotals => ({
+  subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+  tax: items.reduce((sum, item) => sum + item.taxAmount, 0),
+  total: items.reduce((sum, item) => sum + (item.price * item.quantity) + item.taxAmount, 0)
+});
+```
 
-## **Separation of Concerns**
+### Type-Driven Development
 
-  ```typescript
-  // Instead of:
-  app.get("/users", (ctx) => { /* DB ops, validation, business logic */ });
+Build your API from types outward, not the other way around:
 
-  // Do:
-  // routes/users.ts
-  export const getUser = (ctx) => { /* Handler logic */ };
+```typescript
+// 1. Define your domain types
+type User = {
+  id: string;
+  email: string;
+  name: string;
+  role: "admin" | "user";
+  verified: boolean;
+};
 
-  // app.ts
-  import { getUser } from "./api/routes/users";
-  app.get("/users", getUser);
-  ```
+// 2. Define validation schemas that mirror your types
+const userSchema = scope({
+  email: "email",
+  name: "string>2",
+  role: "'admin'|'user'",
+  verified: "boolean"
+}).compile();
 
-## **Schema Sharing**
+// 3. Implement handlers using those types
+app.post<{}, typeof userSchema.infer>("/users", async (ctx) => {
+  return utils.handleResult(ctx.validated.body, ctx,
+    (userData, ctx) => createUser(userData, ctx),
+    (errors, ctx) => handleValidationError(errors, ctx)
+  );
+});
+```
 
-   ```typescript
-   // schemas/user.ts
-   export const userSchema = type({
-     id: "string",
-     email: "email",
-     role: "'user'|'admin'"
-   });
+### Explicit Error Handling
 
-   // Reuse across endpoints
-   app.post("/users", { schema: { body: userSchema } });
-   app.patch("/users/:id", { schema: { params: userSchema } });
-   ```
+Always handle errors explicitly using Result types:
 
----
+```typescript
+// Domain operations return Results
+const findUser = async (id: string): Promise<Result<User, UserError>> => {
+  try {
+    const user = await db.users.findOne({ id });
+    return user 
+      ? { ok: true, value: user }
+      : { ok: false, error: { code: "USER_NOT_FOUND", message: `User ${id} not found` } };
+  } catch (err) {
+    return { 
+      ok: false, 
+      error: { code: "DB_ERROR", message: err.message }
+    };
+  }
+};
 
-## Error Handling Strategy
-
-### Layered Approach
-
-  ```typescript
-  // middleware/errorHandler.ts
-  export const errorHandler: Middleware = async (ctx, next) => {
-    try {
-      await next();
-    } catch (err) {
-      // Structured error response
-      ctx.status = err.status || 500;
-      ctx.json({
-        error: err.message,
-        code: err.code,
-        timestamp: new Date().toISOString()
-      });
+// Handle Results explicitly in your API
+app.get<{ id: string }>("/users/:id", async (ctx) => {
+  return utils.handleResult(ctx.validated.params, ctx,
+    async (params, ctx) => {
+      const result = await findUser(params.id);
       
-      // Logging
-      console.error(`[${ctx.request.method}] ${ctx.url} - Error: ${err.stack}`);
+      return utils.handleResult(result, ctx, 
+        (user, ctx) => utils.setResponse(ctx, utils.createResponse(ctx, user)),
+        (error, ctx) => {
+          if (error.code === "USER_NOT_FOUND") {
+            utils.setStatus(ctx, 404);
+          } else {
+            utils.setStatus(ctx, 500);
+          }
+          return utils.setResponse(ctx, utils.createResponse(ctx, { error }));
+        }
+      );
+    },
+    (errors, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, { 
+        error: "Invalid user ID", 
+        details: errors 
+      }));
     }
-  };
+  );
+});
+```
 
-  // Usage
-  app.use(errorHandler);
-  ```
+## Application Structure
 
-### Custom Error Classes
+### Module Organization
 
-  ```typescript
-  // errors.ts
-  export class ValidationError extends Error {
-    constructor(public issues: ValidationIssue[]) {
-      super("Invalid request data");
-      this.name = "ValidationError";
-    }
+Structure your application with clear boundaries:
+
+```
+src/
+├── domain/           # Business domain types and logic
+│   ├── user.ts       # User domain
+│   ├── order.ts      # Order domain
+│   └── product.ts    # Product domain
+├── api/              # API endpoints
+│   ├── users.ts      # User endpoints
+│   ├── orders.ts     # Order endpoints
+│   └── products.ts   # Product endpoints
+├── middleware/       # Custom middleware
+│   ├── auth.ts       # Authentication middleware
+│   ├── logging.ts    # Logging middleware
+│   └── metrics.ts    # Metrics middleware
+├── services/         # External service integrations
+│   ├── email.ts      # Email service
+│   ├── payment.ts    # Payment service
+│   └── storage.ts    # Storage service
+├── db/               # Database operations
+│   ├── client.ts     # Database client
+│   ├── users.ts      # User repository
+│   └── orders.ts     # Order repository
+├── utils/            # Shared utilities
+│   ├── validation.ts # Validation helpers
+│   ├── errors.ts     # Error handling utilities
+│   └── dates.ts      # Date manipulation utilities
+├── workflows/        # Business workflows
+│   ├── order.ts      # Order processing workflow
+│   └── signup.ts     # User signup workflow
+└── app.ts            # Application bootstrap
+```
+
+### Domain-Driven Routes
+
+Organize routes by domain resource:
+
+```typescript
+// users.ts
+export const registerUserRoutes = (app) => {
+  // List users with pagination and filtering
+  app.get("/users", listUsers);
+  
+  // Get user by ID
+  app.get<{ id: string }>("/users/:id", getUser);
+  
+  // Create new user
+  app.post("/users", createUser);
+  
+  // Update user
+  app.put<{ id: string }>("/users/:id", updateUser);
+  
+  // Delete user
+  app.delete<{ id: string }>("/users/:id", deleteUser);
+  
+  // User-specific sub-resources
+  app.get<{ id: string }>("/users/:id/preferences", getUserPreferences);
+  app.put<{ id: string }>("/users/:id/preferences", updateUserPreferences);
+};
+
+// app.ts
+import { registerUserRoutes } from "./api/users.ts";
+import { registerOrderRoutes } from "./api/orders.ts";
+import { registerProductRoutes } from "./api/products.ts";
+
+const app = App();
+
+// Register routes by domain
+registerUserRoutes(app);
+registerOrderRoutes(app);
+registerProductRoutes(app);
+
+app.listen({ port: 3000 });
+```
+
+### Middleware Composition
+
+Apply middleware strategically:
+
+```typescript
+// Global middleware (applied to all routes)
+app.use(requestLogger);
+app.use(errorHandler);
+
+// Domain-specific middleware
+const userMiddleware = [
+  authenticate,
+  auditLog("users")
+];
+
+// Route-specific middleware composition
+app.get("/users", ...userMiddleware, listUsers);
+app.post("/users", ...userMiddleware, validateUserData, createUser);
+
+// Conditional middleware
+const conditionalAuth = (ctx, next) => {
+  const path = new URL(ctx.request.url).pathname;
+  if (path.startsWith("/admin")) {
+    return authenticate(ctx, next);
   }
+  return next();
+};
+```
 
-  // In handlers
-  if (!valid) {
-    throw new ValidationError(validation.issues);
-  }
-  ```
+## Type Safety
 
-### Workflow Error Recovery
+### Exhaustive Pattern Matching
 
-  ```typescript
-  workflow.createHandler("/transitions", (ctx) => {
-    try {
-      ctx.applyTransition(event);
-    } catch (err) {
-      ctx.workflow.rollback(); // Implement state rollback
-      ctx.respond({
-        error: "Transition failed",
-        lastValidState: ctx.workflow.currentState
-      });
-    }
-  });
-  ```
+Use pattern matching for exhaustive type checking:
 
----
+```typescript
+import { match } from "./mod.ts";
 
-## Workflow Design
+type UserState = 
+  | { status: "guest" }
+  | { status: "registered", id: string }
+  | { status: "verified", id: string, email: string }
+  | { status: "admin", id: string, permissions: string[] };
 
-### State Machine Principles
+// Exhaustive handling of all states
+const getUserPrivileges = (user: UserState): string[] => 
+  match(user)
+    .with({ status: "guest" }, () => [])
+    .with({ status: "registered" }, () => ["read"])
+    .with({ status: "verified" }, () => ["read", "write"])
+    .with({ status: "admin" }, ({ permissions }) => ["read", "write", ...permissions])
+    .exhaustive();
 
-1. **Immutable Transitions**
+// Type refinement with conditions
+const canModifyResource = (user: UserState, resourceOwnerId: string): boolean =>
+  match(user)
+    .with({ status: "admin" }, () => true)
+    .with({ status: "verified", id: resourceOwnerId }, () => true)
+    .otherwise(() => false);
+```
 
-   ```typescript
-   // Load from JSON during startup
-   const workflow = app.workflow();
-   Deno.readTextFileSync("./workflows/ticket.json")
-     .then(config => workflow.load(config));
-   ```
+### Safe Type Narrowing
 
-2. **State Versioning**
+Prefer tagged unions and pattern matching over type assertions:
 
-   ```json
-   // workflows/v1/ticket.json
-   {
-     "version": "1.0.1",
-     "states": ["Open", "Pending"],
-     "transitions": [...]
-   }
-   ```
-
-3. **Transition Validation**
-
-   ```typescript
-   workflow.createHandler("/transitions", (ctx) => {
-     if (!ctx.workflow.isValidTransition(event)) {
-       ctx.metrics.invalidTransitions.inc(); // Track metrics
-       throw new InvalidTransitionError(event);
-     }
-   });
-   ```
-
----
+```typescript
+// Avoid type assertions
+const processInput = (input: unknown) => {
+  // Bad: Type assertion
+  const data = input as { id: string; value: number };
+  
+  // Good: Runtime validation
+  const validation = utils.validate(
+    type({ id: "string", value: "number" }),
+    input
+  );
+  
+  return utils.handleResult(validation, 
+    data => processValidData(data),
+    error => handleValidationError(error)
+  );
+};
+```
 
 ## Performance Optimization
 
-### Middleware Optimization
+### Strategic Data Copying
 
-  ```typescript
-  // Use efficient middleware ordering
-  app.use
-    .use(compression())      // Early in chain
-    .use(securityHeaders())  
-    .use(bodyParser())       // Only on needed routes
-    .use(expensiveAuth());   // Later in chain
-  ```
+Minimize object copying for performance-critical operations:
 
-### Caching Strategies
+```typescript
+// Instead of creating new objects for every transformation:
+const processRequest = (ctx: Context) => {
+  // Directly mutate context in performance-critical paths
+  utils.setStatus(ctx, 200);
+  utils.setHeader(ctx, "Content-Type", "application/json");
+  
+  // Use mutation for large data structures that don't need history
+  const results = ctx.state.searchResults;
+  
+  // Sort in-place for large arrays
+  results.sort((a, b) => a.relevance - b.relevance);
+  
+  return utils.setResponse(ctx, utils.createResponse(ctx, { results }));
+};
+```
 
-  ```typescript
-  // workflows/handlers/ticket.ts
-  const stateCache = new LRU<string, WorkflowState>({
-    max: 1000,
-    ttl: 60_000 // 1 minute
-  });
+### Lazy Evaluation
 
-  export const getState = (ctx) => {
-    const cached = stateCache.get(ctx.params.id);
-    if (cached) return ctx.json(cached);
+Compute values only when needed:
+
+```typescript
+// Instead of computing everything upfront
+app.get("/dashboard", (ctx) => {
+  // Store computation functions in state
+  ctx.state.getRecentOrders = () => db.orders.findRecent();
+  ctx.state.getPopularProducts = () => db.products.findPopular();
+  ctx.state.getUserMetrics = () => analytics.getUserMetrics();
+  
+  // Let the handler decide what to compute
+  return dashboardHandler(ctx);
+});
+
+// Handler only computes what it needs
+const dashboardHandler = async (ctx: Context) => {
+  const view = new URL(ctx.request.url).searchParams.get("view") || "orders";
+  
+  // Only compute what's needed for the requested view
+  if (view === "orders") {
+    const orders = await ctx.state.getRecentOrders();
+    return utils.setResponse(ctx, utils.createResponse(ctx, { orders }));
+  }
+  
+  if (view === "products") {
+    const products = await ctx.state.getPopularProducts();
+    return utils.setResponse(ctx, utils.createResponse(ctx, { products }));
+  }
+  
+  // Default dashboard with minimal data
+  return utils.setResponse(ctx, utils.createResponse(ctx, { 
+    message: "Select a view" 
+  }));
+};
+```
+
+### Connection and Resource Pooling
+
+Manage expensive resources with pools:
+
+```typescript
+// Create a database connection pool
+const dbPool = createPool({
+  min: 5,
+  max: 20,
+  create: () => createConnection(DB_URL),
+  destroy: (conn) => conn.close(),
+});
+
+// Database middleware to provide connections
+app.use(async (ctx, next) => {
+  const connection = await dbPool.acquire();
+  
+  try {
+    ctx.state.db = connection;
+    await next();
+  } finally {
+    await dbPool.release(connection);
+  }
+});
+```
+
+## Workflow Engine Patterns
+
+### Clean State Management
+
+Keep workflow state transitions clean and explicit:
+
+```typescript
+// Define workflow with clear states and transitions
+const orderWorkflow = app.workflow<OrderState, OrderEvent>();
+
+orderWorkflow.load({
+  states: ["Draft", "Submitted", "Processing", "Shipped", "Delivered", "Cancelled"],
+  events: ["Submit", "Process", "Ship", "Deliver", "Cancel"],
+  transitions: [
+    // From Draft, can only Submit or Cancel
+    { from: "Draft", to: "Submitted", on: "Submit" },
+    { from: "Draft", to: "Cancelled", on: "Cancel" },
     
-    const state = fetchStateFromDB(ctx.params.id);
-    stateCache.set(ctx.params.id, state);
-    return ctx.json(state);
-  };
-  ```
-
----
-
-## Security Practices
-
-### Input Sanitization
-
-  ```typescript
-  // middleware/sanitization.ts
-  export const xssProtection: Middleware = (ctx, next) => {
-    const sanitize = (obj: Record<string, unknown>) => {
-      // Implement XSS sanitization logic
-    };
+    // From Submitted, can Process or Cancel
+    { from: "Submitted", to: "Processing", on: "Process" },
+    { from: "Submitted", to: "Cancelled", on: "Cancel" },
     
-    if (ctx.validated.body) sanitize(ctx.validated.body);
-    if (ctx.validated.query) sanitize(ctx.validated.query);
+    // From Processing, can Ship or Cancel
+    { from: "Processing", to: "Shipped", on: "Ship" },
+    { from: "Processing", to: "Cancelled", on: "Cancel" },
     
-    next();
-  };
+    // From Shipped, can only Deliver
+    { from: "Shipped", to: "Delivered", on: "Deliver" },
+  ],
+  initial: "Draft"
+});
 
-  // Apply to all routes
-  app.use(xssProtection);
-  ```
+// Use pattern matching for state-dependent behavior
+const getOrderActions = (order: Order): string[] => 
+  match(order.state)
+    .with("Draft", () => ["Submit", "Cancel"])
+    .with("Submitted", () => ["Process", "Cancel"])
+    .with("Processing", () => ["Ship", "Cancel"])
+    .with("Shipped", () => ["Deliver"])
+    .with("Delivered", () => [])
+    .with("Cancelled", () => [])
+    .exhaustive();
+```
 
-### Rate Limiting
+### Event-Driven Processing
 
-  ```typescript
-  // middleware/rateLimit.ts
-  const limiter = new TokenBucket({
-    capacity: 100,
-    refillRate: 1 // per second
-  });
+Use workflow events to drive business processes:
 
-  export const rateLimit: Middleware = (ctx, next) => {
-    if (!limiter.consume(ctx.ip)) {
-      ctx.status = 429;
-      return ctx.json({ error: "Too many requests" });
-    }
-    next();
-  };
-
-  // Apply to sensitive endpoints
-  app.post("/login", rateLimit, loginHandler);
-  ```
-
----
-
-## Testing Strategy
-
-### Unit Testing Handlers
-
-  ```typescript
-  // tests/userHandlers.test.ts
-  Deno.test("GET /users returns valid response", async () => {
-    const mockCtx = createMockContext({
-      path: "/users",
-      method: "GET"
-    });
-    
-    await userHandlers.getUsers(mockCtx);
-    
-    assertEquals(mockCtx.status, 200);
-    assertInstanceOf(mockCtx.body, Array);
-  });
-  ```
-
-### Workflow Transition Testing
-
-  ```typescript
-  Deno.test("Ticket workflow transitions", () => {
-    const workflow = setupWorkflow();
-    
-    workflow.applyTransition("StartProgress");
-    assertEquals(workflow.currentState, "InProgress");
-    
-    workflow.applyTransition("Complete");
-    assertEquals(workflow.currentState, "Resolved");
-    
-    assertThrows(() => workflow.applyTransition("InvalidEvent"));
-  });
-  ```
-
-### Load Testing
-
-  ```bash
-  # Run load test for workflow endpoints
-  deno bench --load "/transitions" --duration 30s
-  ```
-
----
-
-## Documentation Practices
-
-### Inline Type Documentation
-
-  ```typescript
-  /**
-   * @typedef {Object} WorkflowTransition
-   * @property {WorkflowState} from - Initial state
-   * @property {WorkflowState} to - Target state
-   * @property {WorkflowEvent} on - Triggering event
-   * @property {TaskAssignment} task - Resulting task
-   */
-  export type WorkflowTransition = {
-    from: WorkflowState;
-    to: WorkflowState;
-    on: WorkflowEvent;
-    task: TaskAssignment;
-  };
-  ```
-
-### Automated API Docs
-
-  ```typescript
-  // Generate OpenAPI spec from routes
-  const specBuilder = new OpenAPIBuilder({
-    title: "Ticket API",
-    version: "1.0.0"
-  });
-
-  app.routes.forEach(route => {
-    specBuilder.addPath(route.path, {
-      [route.method]: {
-        description: route.handler.description,
-        parameters: route.schema
+```typescript
+orderWorkflow.createHandler("/orders/:id/events", async (ctx) => {
+  return utils.handleResult(ctx.validated.params, ctx,
+    async (params, ctx) => {
+      // Get order
+      const order = await db.orders.findOne(params.id);
+      if (!order) {
+        utils.setStatus(ctx, 404);
+        return utils.setResponse(ctx, utils.createResponse(ctx, { 
+          error: "Order not found" 
+        }));
       }
-    });
-  });
+      
+      // Validate body
+      return utils.handleResult(
+        utils.validate(
+          type({ event: ["Submit", "|", "Process", "|", "Ship", "|", "Deliver", "|", "Cancel"] }),
+          ctx.validated.body.value
+        ),
+        ctx,
+        async (body, ctx) => {
+          const { event } = body;
+          const instance = ctx.workflow.instance;
+          
+          // Check if transition is valid
+          if (!utils.canTransition(instance, event)) {
+            utils.setStatus(ctx, 400);
+            return utils.setResponse(ctx, utils.createResponse(ctx, {
+              error: "Invalid state transition",
+              currentState: instance.currentState,
+              event: event
+            }));
+          }
+          
+          // Apply transition
+          const success = utils.applyTransition(instance, event);
+          
+          if (success) {
+            // Update order with new state
+            order.state = instance.currentState;
+            await db.orders.update(order.id, order);
+            
+            // Find transition for task info
+            const transition = utils.findTransition(instance, event);
+            
+            // Process side effects
+            if (transition?.task) {
+              await processOrderTask(order, transition.task);
+            }
+            
+            return utils.setResponse(ctx, utils.createResponse(ctx, {
+              order,
+              state: order.state,
+              availableEvents: getOrderActions(order)
+            }));
+          }
+          
+          // Transition failed
+          utils.setStatus(ctx, 500);
+          return utils.setResponse(ctx, utils.createResponse(ctx, {
+            error: "Failed to apply transition"
+          }));
+        },
+        (errors, ctx) => {
+          utils.setStatus(ctx, 400);
+          return utils.setResponse(ctx, utils.createResponse(ctx, {
+            error: "Invalid event data",
+            details: errors
+          }));
+        }
+      );
+    },
+    (errors, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
+        error: "Invalid order ID",
+        details: errors
+      }));
+    }
+  );
+});
+```
 
-  Deno.writeTextFileSync("openapi.json", specBuilder.spec);
-  ```
+## Error Handling
+
+### Domain-Specific Errors
+
+Define domain-specific error types:
+
+```typescript
+// Domain error types
+type OrderErrorCode = 
+  | "INVALID_ORDER"
+  | "PRODUCT_UNAVAILABLE"
+  | "PAYMENT_FAILED"
+  | "SHIPPING_UNAVAILABLE";
+
+type OrderError = {
+  code: OrderErrorCode;
+  message: string;
+  details?: unknown;
+};
+
+// Error creation helpers
+const createOrderError = (
+  code: OrderErrorCode,
+  message: string,
+  details?: unknown
+): OrderError => ({
+  code,
+  message,
+  details
+});
+
+// Domain operations return Result types
+const processOrder = async (order: Order): Promise<Result<Order, OrderError>> => {
+  // Check inventory
+  const unavailableProduct = await findUnavailableProduct(order);
+  if (unavailableProduct) {
+    return {
+      ok: false,
+      error: createOrderError(
+        "PRODUCT_UNAVAILABLE",
+        `Product ${unavailableProduct.name} is out of stock`,
+        { productId: unavailableProduct.id }
+      )
+    };
+  }
+  
+  // Process payment
+  const paymentResult = await processPayment(order);
+  if (!paymentResult.ok) {
+    return {
+      ok: false,
+      error: createOrderError(
+        "PAYMENT_FAILED",
+        "Payment processing failed",
+        paymentResult.error
+      )
+    };
+  }
+  
+  // Update order
+  const updatedOrder = {
+    ...order,
+    status: "PAID",
+    paymentId: paymentResult.value.id
+  };
+  
+  return { ok: true, value: updatedOrder };
+};
+```
+
+### Status Code Mapping
+
+Map domain errors to appropriate HTTP status codes:
+
+```typescript
+// Error to status code mapping
+const getStatusForError = (error: OrderError): number => {
+  switch (error.code) {
+    case "INVALID_ORDER":
+      return 400; // Bad Request
+    case "PRODUCT_UNAVAILABLE":
+      return 409; // Conflict
+    case "PAYMENT_FAILED":
+      return 402; // Payment Required
+    case "SHIPPING_UNAVAILABLE":
+      return 422; // Unprocessable Entity
+    default:
+      return 500; // Internal Server Error
+  }
+};
+
+// Use in API handlers
+app.post("/orders", async (ctx) => {
+  return utils.handleResult(ctx.validated.body, ctx,
+    async (orderData, ctx) => {
+      const result = await processOrder(orderData);
+      
+      return utils.handleResult(result, ctx,
+        (order, ctx) => {
+          utils.setStatus(ctx, 201);
+          utils.setHeader(ctx, "Location", `/orders/${order.id}`);
+          return utils.setResponse(ctx, utils.createResponse(ctx, order));
+        },
+        (error, ctx) => {
+          utils.setStatus(ctx, getStatusForError(error));
+          return utils.setResponse(ctx, utils.createResponse(ctx, { error }));
+        }
+      );
+    },
+    (errors, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
+        error: "Invalid order data",
+        details: errors
+      }));
+    }
+  );
+});
+```
+
+## Testing
+
+### Handler Testing
+
+Write unit tests for handlers:
+
+```typescript
+// users.test.ts
+import { assertEquals } from "https://deno.land/std/testing/asserts.ts";
+import { createMockContext } from "../testing/mocks.ts";
+import { getUser } from "./users.ts";
+
+Deno.test("getUser - returns user when found", async () => {
+  // Arrange
+  const mockUser = { id: "123", name: "Test User" };
+  const mockDb = {
+    users: {
+      findOne: () => Promise.resolve(mockUser)
+    }
+  };
+  
+  const ctx = createMockContext({
+    params: { id: "123" },
+    state: { db: mockDb }
+  });
+  
+  // Act
+  await getUser(ctx);
+  
+  // Assert
+  assertEquals(ctx.status, 200);
+  const body = await ctx.response?.json();
+  assertEquals(body, mockUser);
+});
+
+Deno.test("getUser - returns 404 when user not found", async () => {
+  // Arrange
+  const mockDb = {
+    users: {
+      findOne: () => Promise.resolve(null)
+    }
+  };
+  
+  const ctx = createMockContext({
+    params: { id: "not-found" },
+    state: { db: mockDb }
+  });
+  
+  // Act
+  await getUser(ctx);
+  
+  // Assert
+  assertEquals(ctx.status, 404);
+  const body = await ctx.response?.json();
+  assertEquals(body.error, "User not found");
+});
+```
+
+### Integration Testing
+
+Test your API endpoints:
+
+```typescript
+// api.test.ts
+import { assertEquals } from "https://deno.land/std/testing/asserts.ts";
+import { app } from "../app.ts";
+
+// Start the app in test mode
+const server = app.listen({ port: 0 }); // Random port
+const port = server.address?.port;
+
+Deno.test("GET /users/:id - returns user when found", async () => {
+  // Seed test data
+  await seedTestUser({ id: "test-user", name: "Test User" });
+  
+  // Make request
+  const res = await fetch(`http://localhost:${port}/users/test-user`);
+  
+  // Assert
+  assertEquals(res.status, 200);
+  const data = await res.json();
+  assertEquals(data.id, "test-user");
+  assertEquals(data.name, "Test User");
+});
+
+Deno.test("GET /users/:id - returns 404 when user not found", async () => {
+  const res = await fetch(`http://localhost:${port}/users/not-found`);
+  
+  assertEquals(res.status, 404);
+  const data = await res.json();
+  assertEquals(data.error, "User not found");
+});
+
+// Clean up
+Deno.addSignalListener("SIGINT", () => {
+  server.close();
+});
+```
+
+## Deployment
+
+### Environment Configuration
+
+Use environment variables for configuration:
+
+```typescript
+// config.ts
+export const config = {
+  port: parseInt(Deno.env.get("PORT") || "3000"),
+  environment: Deno.env.get("ENVIRONMENT") || "development",
+  databaseUrl: Deno.env.get("DATABASE_URL") || "postgres://localhost:5432/app",
+  logLevel: Deno.env.get("LOG_LEVEL") || "info",
+  maxMemoryMb: parseInt(Deno.env.get("MAX_MEMORY_MB") || "512"),
+};
+
+// app.ts
+import { config } from "./config.ts";
+
+// Configure Deno's memory limits
+if (config.maxMemoryMb > 0) {
+  // deno run with appropriate v8 flags
+  console.log(`Setting memory limit to ${config.maxMemoryMb}MB`);
+}
+
+// Configure app based on environment
+const app = App();
+
+if (config.environment === "production") {
+  app.use(productionMiddleware);
+}
+
+app.listen({ port: config.port });
+```
+
+### Graceful Shutdown
+
+Implement proper cleanup on shutdown:
+
+```typescript
+// app.ts
+import { App } from "./mod.ts";
+
+const app = App();
+
+// Setup routes
+setupRoutes(app);
+
+// Start server
+const controller = new AbortController();
+const server = app.listen({ 
+  port: 3000,
+  signal: controller.signal
+});
+
+// Graceful shutdown
+const shutdown = async () => {
+  console.log("Shutting down gracefully...");
+  
+  // Close server
+  controller.abort();
+  
+  // Close database connections
+  await closeDatabase();
+  
+  // Other cleanup
+  console.log("Cleanup complete");
+  Deno.exit(0);
+};
+
+// Listen for termination signals
+Deno.addSignalListener("SIGINT", shutdown);
+Deno.addSignalListener("SIGTERM", shutdown);
+```
+
+## Security
+
+### Input Validation
+
+Always validate input data:
+
+```typescript
+// Never trust external input
+app.post("/login", async (ctx) => {
+  return utils.handleResult(
+    utils.validate(
+      type({
+        username: "email",
+        password: ["string", "length>", 8]
+      }),
+      ctx.validated.body.value
+    ),
+    ctx,
+    async (credentials, ctx) => {
+      // Input is now validated
+      const user = await authenticateUser(credentials);
+      return utils.handleResult(user, ctx,
+        (user, ctx) => handleSuccessfulLogin(user, ctx),
+        (error, ctx) => handleFailedLogin(error, ctx)
+      );
+    },
+    (errors, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
+        error: "Invalid credentials format",
+        details: errors
+      }));
+    }
+  );
+});
+```
+
+### Content Security
+
+Set appropriate security headers:
+
+```typescript
+// Security middleware
+app.use(async (ctx, next) => {
+  // Security headers
+  utils.setHeader(ctx, "X-Content-Type-Options", "nosniff");
+  utils.setHeader(ctx, "X-Frame-Options", "DENY");
+  utils.setHeader(ctx, "X-XSS-Protection", "1; mode=block");
+  utils.setHeader(ctx, "Referrer-Policy", "no-referrer-when-downgrade");
+  utils.setHeader(ctx, "Content-Security-Policy", "default-src 'self'");
+  
+  await next();
+});
+```
+
+## Conclusion
+
+Mix balances performance optimization with functional programming principles. By following these best practices, you can create efficient, maintainable, and type-safe applications that leverage the full potential of the framework.
+
+Remember:
+
+- Use strategic mutation for performance-critical paths
+- Keep domain logic pure and functional
+- Employ pattern matching for exhaustive type checking
+- Handle errors explicitly with Result types
+- Test thoroughly at all levels
+- Implement proper resource management
+
+This approach gives you the best of both worlds: the performance of mutation-based code where it matters, and the safety and maintainability of functional patterns everywhere else.
