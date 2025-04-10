@@ -3,7 +3,7 @@
 ## Core API
 
 ```typescript
-interface BixApp {
+interface MixApp {
   use(middleware: Middleware): this;
   get(path: string, handler: Handler): this;
   post(path: string, config: RouteConfig): this;

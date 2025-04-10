@@ -1,19 +1,17 @@
-# Bix 🚀
+# Mix 🚀
 
 **Type-Safe API & Workflow Microframework for Deno**  
 *Build Robust REST APIs and Stateful Workflows with Confidence*
 
 *Powered by [Deno](https://deno.land) and [ArkType](https://arktype.io)*
 
-
 [![Deno Version](https://img.shields.io/badge/deno-2.2-blue?logo=deno)](https://deno.land)
 [![ArkType Version](https://img.shields.io/badge/arktype-2.1-orange?logo=deno)](https://arktype.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-
 ```ts
 // Simple API Example
-const app = Bix()
+const app = Mix()
   .get("/hello", (ctx) => ctx.json({ message: "Hello World" }))
   .listen({ port: 3000 });
 ```
@@ -39,7 +37,7 @@ const app = Bix()
 
 ```bash
 # Import directly from Deno.land
-import { Bix } from "https://deno.land/x/bix/mod.ts";
+import { Mix } from "https://deno.land/x/Mix/mod.ts";
 ```
 
 Permissions (add to deno.json):
@@ -59,7 +57,7 @@ Permissions (add to deno.json):
 ### Basic API
 
 ```typescript
-const api = Bix();
+const api = Mix();
 
 // Simple endpoint
 api.get("/users", (ctx) => {
@@ -86,7 +84,7 @@ api.listen({ port: 8000 });
 ### Workflow Management
 
 ```typescript
-const workflow = Bix().workflow<"Draft" | "Published", "Publish">();
+const workflow = Mix().workflow<"Draft" | "Published", "Publish">();
 
 // Define transitions
 workflow
@@ -112,7 +110,7 @@ workflow
 ## Documentation 📚
 
 Explore full capabilities at:  
-[📖 Bix Documentation](https://bixframework.org/docs)
+[📖 Mix Documentation](https://Mixframework.org/docs)
 
 | Section               | Description                          |
 |-----------------------|--------------------------------------|

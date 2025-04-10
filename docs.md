@@ -1,6 +1,6 @@
-# Bix Framework Tutorial: Building APIs & Workflows
+# Mix Framework Tutorial: Building APIs & Workflows
 
-This tutorial covers using Bix for two key scenarios:  
+This tutorial covers using Mix for two key scenarios:  
 **1. REST API Development**  
 **2. Workflow Management Systems**
 
@@ -242,13 +242,13 @@ curl -X POST http://localhost:3000/tickets/123/transitions \
 
 ## Conclusion
 
-**Use Bix for APIs when:**
+**Use Mix for APIs when:**
 
 - Building RESTful services
 - Need HATEOAS compliance
 - Managing resource state
 
-**Use Bix Workflows when:**
+**Use Mix Workflows when:**
 
 - Modeling business processes
 - Managing state transitions

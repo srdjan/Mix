@@ -103,7 +103,7 @@ curl -X PUT http://localhost:3000/products/KEY-5678 \
 curl http://localhost:3000/products?page=2
 ```
 
-This example showcases Bix's capabilities for building:
+This example showcases Mix's capabilities for building:
 
 - Type-safe REST APIs
 - Validation-driven endpoints
