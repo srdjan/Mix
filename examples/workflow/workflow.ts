@@ -1,18 +1,18 @@
 // document_workflow.ts
 import { App, type, scope, match } from "./mod.ts";
 
-// 1. Define Workflow Types with Algebraic Data Types
+// 1. Define Workflow Types
 type DocState = "Draft" | "Review" | "Approved" | "Rejected" | "Archived";
 type DocEvent = "Submit" | "Approve" | "Reject" | "Revise" | "Archive";
 
-// Document as immutable data structure
+// Document structure
 type Document = {
   id: string;
   title: string;
   content: string;
   author: string;
   state: DocState;
-  history: ReadonlyArray<{
+  history: Array<{
     from: DocState;
     to: DocState;
     at: Date;
@@ -21,7 +21,7 @@ type Document = {
   }>;
 };
 
-// Document creation request schema
+// Document creation schema
 const createDocSchema = type({
   title: "string>3",
   content: "string",
@@ -35,68 +35,17 @@ const transitionSchema = type({
   comments: type("string").optional()
 });
 
-// 2. Pure Functions for Document Operations
-const createDocument = (
-  input: typeof createDocSchema.infer
-): Document => ({
-  id: crypto.randomUUID(),
-  ...input,
-  state: "Draft" as DocState,
-  history: []
-});
-
-const applyDocTransition = (
-  doc: Document,
-  event: DocEvent,
-  nextState: DocState,
-  user: string,
-  comments?: string
-): Document => ({
-  ...doc,
-  state: nextState,
-  history: [
-    ...doc.history,
-    {
-      from: doc.state,
-      to: nextState,
-      at: new Date(),
-      by: user,
-      comments
-    }
-  ]
-});
-
-// Email sending as a pure effect descriptor
-type EmailEffect = {
-  type: "email";
-  to: string;
-  message: string;
-};
-
-const createEmailEffect = (to: string, message: string, doc: Document): EmailEffect => ({
-  type: "email",
-  to,
-  message: message.replace("{title}", doc.title)
-});
-
-// Effect handler (side effect isolated at the boundary)
-const executeEffect = (effect: EmailEffect): void => {
-  if (effect.type === "email") {
-    console.log(`[Email] To: ${effect.to}\nMessage: ${effect.message}`);
-  }
-};
+// 2. Mock Database (direct mutation for performance)
+const documents = new Map<string, Document>();
 
 // 3. Initialize App with Workflow
 const app = App();
 const { utils } = app;
 
-// 4. Setup Document Store
-const documents = new Map<string, Document>();
-
-// 5. Create Workflow Engine
+// 4. Create Workflow Engine
 const docWorkflow = app.workflow<DocState, DocEvent>();
 
-// 6. Load Workflow Definition
+// 5. Load Workflow Definition
 docWorkflow.load({
   states: ["Draft", "Review", "Approved", "Rejected", "Archived"],
   events: ["Submit", "Approve", "Reject", "Revise", "Archive"],
@@ -150,223 +99,233 @@ docWorkflow.load({
   initial: "Draft"
 });
 
-// 7. Document Creation Handler
+// 6. Document Creation Handler with optimized mutation
 docWorkflow.createHandler("/documents", async (ctx) => {
-  return utils.handleResult(
-    utils.validate(createDocSchema, ctx.validated.body.value), docData => {
-      // Create new document (pure operation)
-      const doc = createDocument(docData);
+  // Validate document data with error handling
+  if (!ctx.validated.body.ok) {
+    utils.setStatus(ctx, 400);
+    return utils.setResponse(ctx, utils.createResponse(ctx, {
+      error: "Invalid document data",
+      details: ctx.validated.body.error
+    }));
+  }
+
+  const validation = utils.validate(createDocSchema, ctx.validated.body.value);
+
+  return utils.handleResult(validation, ctx,
+    (docData, ctx) => {
+      // Create new document
+      const doc: Document = {
+        id: crypto.randomUUID(),
+        ...docData,
+        state: ctx.workflow.instance.currentState as DocState,
+        history: []
+      };
 
       // Store document (side effect at boundary)
       documents.set(doc.id, doc);
 
       // Return response with HATEOAS links
-      return utils.withResponse(
-        utils.withStatus(ctx, 201),
-        utils.createResponse(ctx, doc, {
-          links: {
-            self: `/documents/${doc.id}`,
-            submit: { href: `/documents/${doc.id}/submit`, templated: false }
-          }
-        })
-      );
+      utils.setStatus(ctx, 201);
+      return utils.setResponse(ctx, utils.createResponse(ctx, doc, {
+        links: {
+          self: `/documents/${doc.id}`,
+          submit: { href: `/documents/${doc.id}/submit`, templated: false }
+        }
+      }));
     },
-    errors => utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
+    (errors, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
         error: "Invalid document data",
         details: errors
-      })
-    )
+      }));
+    }
   );
 });
 
-// 8. Transition Handler
+// 7. Transition Handler
 docWorkflow.createHandler("/documents/:id/transitions", async (ctx) => {
-  // Validate parameters
-  return utils.handleResult(
-    ctx.validated.params,
-    params => {
-      const docId = params.id;
-      const doc = documents.get(docId);
+  // Performance optimization: Validate early and fail fast
+  if (!ctx.validated.params.ok || !ctx.validated.body.ok) {
+    utils.setStatus(ctx, 400);
+    return utils.setResponse(ctx, utils.createResponse(ctx, {
+      error: "Invalid request data",
+      details: [
+        ...(ctx.validated.params.ok ? [] : ["Invalid document ID"]),
+        ...(ctx.validated.body.ok ? [] : ["Invalid transition data"])
+      ]
+    }));
+  }
 
-      return utils.match(doc)
-        .with(match.undefined, () => utils.withResponse(
-          utils.withStatus(ctx, 404),
-          utils.createResponse(ctx, { error: "Document not found" })
-        ))
-        .otherwise(doc => handleDocumentTransition(ctx, doc));
-    },
-    errors => utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
-        error: "Invalid document ID",
-        details: errors
-      })
-    )
-  );
-});
+  const docId = ctx.validated.params.value.id;
+  const doc = documents.get(docId);
 
-// Helper function for document transitions
-const handleDocumentTransition = async (ctx: any, doc: Document) => {
-  return utils.handleResult(
-    utils.validate(transitionSchema, ctx.validated.body.value),
-    transitionRequest => {
-      const { event, user, comments } = transitionRequest;
+  if (!doc) {
+    utils.setStatus(ctx, 404);
+    return utils.setResponse(ctx, utils.createResponse(ctx, {
+      error: "Document not found"
+    }));
+  }
+
+  // Validate transition data
+  const transitionValidation = utils.validate(transitionSchema, ctx.validated.body.value);
+
+  return utils.handleResult(transitionValidation, ctx,
+    (transitionReq, ctx) => {
+      const { event, user, comments } = transitionReq;
       const workflowInstance = ctx.workflow.instance;
 
       // Check if transition is valid
-      const canTransition = utils.canTransition(workflowInstance, event);
+      if (!utils.canTransition(workflowInstance, event)) {
+        utils.setStatus(ctx, 400);
+        return utils.setResponse(ctx, utils.createResponse(ctx, {
+          error: "Invalid transition",
+          currentState: doc.state,
+          requestedEvent: event
+        }));
+      }
 
-      return utils.match(canTransition)
-        .when(false, () => utils.withResponse(
-          utils.withStatus(ctx, 400),
-          utils.createResponse(ctx, {
-            error: "Invalid transition",
-            currentState: doc.state,
-            requestedEvent: event
-          })
-        ))
-        .otherwise(() => {
-          try {
-            // Apply transition to workflow (pure operation)
-            const updatedInstance = utils.applyTransition(workflowInstance, event);
+      try {
+        // Find matching transition for task info
+        const transition = utils.findTransition(workflowInstance, event);
 
-            // Determine next state
-            const nextState = updatedInstance.currentState as DocState;
+        // Apply transition with mutable update (returns boolean success)
+        const success = utils.applyTransition(workflowInstance, event);
 
-            // Apply transition to document (pure operation)
-            const updatedDoc = applyDocTransition(doc, event, nextState, user, comments);
+        if (!success) {
+          throw new Error("Transition application failed");
+        }
 
-            // Update document in store (side effect at boundary)
-            documents.set(doc.id, updatedDoc);
+        // Update document state (direct mutation)
+        const prevState = doc.state;
+        doc.state = workflowInstance.currentState as DocState;
 
-            // Find matching transition for task
-            const transition = workflowInstance.definition.transitions.find(t =>
-              t.from === doc.state && t.on === event
-            );
-
-            // Handle task assignment if exists (side effect at boundary)
-            if (transition?.task) {
-              const emailEffect = createEmailEffect(
-                transition.task.assign,
-                transition.task.message,
-                updatedDoc
-              );
-              executeEffect(emailEffect);
-            }
-
-            // Determine available transitions
-            const availableTransitions = workflowInstance.definition.transitions
-              .filter(t => t.from === nextState)
-              .map(t => t.on);
-
-            // Build response
-            return utils.withResponse(
-              ctx,
-              utils.createResponse(ctx, {
-                currentState: updatedDoc.state,
-                availableTransitions,
-                document: updatedDoc
-              }, {
-                links: {
-                  history: `/documents/${doc.id}/history`,
-                  revert: updatedDoc.history.length > 0
-                    ? `/documents/${doc.id}/revert`
-                    : undefined
-                }
-              })
-            );
-          } catch (error) {
-            return utils.withResponse(
-              utils.withStatus(ctx, 500),
-              utils.createResponse(ctx, {
-                error: "Transition failed",
-                details: error instanceof Error ? error.message : String(error)
-              })
-            );
-          }
+        // Add history entry (direct mutation)
+        doc.history.push({
+          from: prevState,
+          to: doc.state,
+          at: new Date(),
+          by: user,
+          comments
         });
+
+        // Handle task assignment if exists
+        if (transition?.task) {
+          sendEmail(
+            transition.task.assign,
+            transition.task.message.replace("{title}", doc.title)
+          );
+        }
+
+        // Determine available transitions (optimized)
+        const availableTransitions = workflowInstance.definition.transitions
+          .filter(t => t.from === doc.state)
+          .map(t => t.on);
+
+        // Return response
+        return utils.setResponse(ctx, utils.createResponse(ctx, {
+          currentState: doc.state,
+          availableTransitions,
+          document: doc
+        }, {
+          links: {
+            history: `/documents/${doc.id}/history`,
+            revert: doc.history.length > 0
+              ? `/documents/${doc.id}/revert`
+              : undefined
+          }
+        }));
+      } catch (error) {
+        utils.setStatus(ctx, 500);
+        return utils.setResponse(ctx, utils.createResponse(ctx, {
+          error: "Transition failed",
+          details: error instanceof Error ? error.message : String(error)
+        }));
+      }
     },
-    errors => utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
+    (errors, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
         error: "Invalid transition request",
         details: errors
-      })
-    )
+      }));
+    }
   );
-};
+});
 
-// 9. Document Retrieval Handler
+// 8. Document Retrieval Handler
 app.get<{ id: string }>("/documents/:id", async (ctx) => {
-  return utils.handleResult(
-    ctx.validated.params,
-    params => {
+  return utils.handleResult(ctx.validated.params, ctx,
+    (params, ctx) => {
       const docId = params.id;
       const doc = documents.get(docId);
 
-      return utils.match(doc)
-        .with(match.defined, doc => utils.withResponse(
-          ctx,
-          utils.createResponse(ctx, doc, {
-            links: {
-              transitions: `/documents/${docId}/transitions`,
-              workflowDefinition: "/workflow"
-            }
-          })
-        ))
-        .otherwise(() => utils.withResponse(
-          utils.withStatus(ctx, 404),
-          utils.createResponse(ctx, { error: "Document not found" })
-        ));
+      if (!doc) {
+        utils.setStatus(ctx, 404);
+        return utils.setResponse(ctx, utils.createResponse(ctx, {
+          error: "Document not found"
+        }));
+      }
+
+      return utils.setResponse(ctx, utils.createResponse(ctx, doc, {
+        links: {
+          transitions: `/documents/${docId}/transitions`,
+          workflowDefinition: "/workflow"
+        }
+      }));
     },
-    errors => utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
+    (errors, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
         error: "Invalid document ID",
         details: errors
-      })
-    )
+      }));
+    }
   );
 });
 
-// 10. Document History Handler
+// 9. Document History Handler
 app.get<{ id: string }>("/documents/:id/history", async (ctx) => {
-  return utils.handleResult(
-    ctx.validated.params,
-    params => {
+  return utils.handleResult(ctx.validated.params, ctx,
+    (params, ctx) => {
       const docId = params.id;
       const doc = documents.get(docId);
 
-      return utils.withResponse(
+      // Empty array for non-existent docs (performance optimization)
+      return utils.setResponse(ctx, utils.createResponse(
         ctx,
-        utils.createResponse(ctx, doc?.history || [])
-      );
+        doc?.history || []
+      ));
     },
-    errors => utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
+    (errors, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
         error: "Invalid document ID",
         details: errors
-      })
-    )
+      }));
+    }
   );
 });
 
-// 11. Workflow Definition Endpoint
+// 10. Workflow Definition Endpoint
 app.get("/workflow", async (ctx) => {
-  return utils.withResponse(
+  return utils.setResponse(ctx, utils.createResponse(
     ctx,
-    utils.createResponse(ctx, docWorkflow.toJSON())
-  );
+    docWorkflow.toJSON()
+  ));
 });
 
-// 12. Start Server
+// Helper Functions (isolated side effects)
+function sendEmail(to: string, message: string) {
+  console.log(`[Email] To: ${to}\nMessage: ${message}`);
+}
+
+// 11. Start Server with performance optimizations
 const port = 3000;
 app.listen({
   port,
   onListen: ({ hostname, port }) => {
-    console.log(`Document Workflow API running on http://${hostname}:${port}`);
+    console.log(`Document Workflow API running at http://${hostname}:${port}`);
   }
 });

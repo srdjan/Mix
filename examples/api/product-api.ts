@@ -31,36 +31,7 @@ products.set("ABC-1234", {
 const app = App();
 const { utils } = app;
 
-// Schema validation middleware factory
-const validateSchema = <T>(schema: ReturnType<typeof type>) =>
-  async (ctx: any, next: () => Promise<void>) => {
-    if (!ctx.validated.body.ok) {
-      return utils.withResponse(
-        utils.withStatus(ctx, 400),
-        utils.createResponse(ctx, {
-          error: "Invalid request data",
-          details: ctx.validated.body.error
-        })
-      );
-    }
-
-    const validation = utils.validate(schema, ctx.validated.body.value);
-
-    return utils.match(validation)
-      .with({ ok: true }, () => next())
-      .with({ ok: false }, ({ error }) =>
-        utils.withResponse(
-          utils.withStatus(ctx, 400),
-          utils.createResponse(ctx, {
-            error: "Schema validation failed",
-            details: error
-          })
-        )
-      )
-      .exhaustive();
-  };
-
-// 4. Global Middleware
+// Performance-optimized middleware (direct mutation)
 app.use(async (ctx, next) => {
   console.log(`[${new Date().toISOString()}] ${ctx.request.method} ${new URL(ctx.request.url).pathname}`);
   await next();
@@ -69,27 +40,26 @@ app.use(async (ctx, next) => {
 app.use(async (ctx, next) => {
   const apiKey = ctx.request.headers.get("X-API-Key");
 
-  return utils.match(apiKey === Deno.env.get("API_KEY"))
-    .when(true, () => next())
-    .otherwise(() =>
-      utils.withResponse(
-        utils.withStatus(ctx, 401),
-        utils.createResponse(ctx, { error: "Invalid API key" })
-      )
-    );
+  if (apiKey !== Deno.env.get("API_KEY")) {
+    utils.setStatus(ctx, 401);
+    return utils.setResponse(ctx, utils.createResponse(ctx, { error: "Invalid API key" }));
+  }
+
+  await next();
 });
 
-// 5. API Endpoints
+// GET /products - List products with pagination
 app.get("/products", async (ctx) => {
-  return utils.handleResult(ctx.validated.query,
-    query => {
+  // Use handleResult with direct context mutation
+  return utils.handleResult(ctx.validated.query, ctx,
+    (query, ctx) => {
       const page = parseInt(query.page || "1", 10);
       const limit = 10;
 
       const results = Array.from(products.values())
         .slice((page - 1) * limit, page * limit);
 
-      return utils.withResponse(ctx, utils.createResponse(ctx, {
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
         data: results,
         _links: {
           self: `/products?page=${page}`,
@@ -103,181 +73,203 @@ app.get("/products", async (ctx) => {
         }
       }));
     },
-    error => utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
+    (error, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
         error: "Invalid query parameters",
         details: error
-      })
-    )
+      }));
+    }
   );
 });
 
-// POST /products with schema validation
+// POST /products - Create a new product
 app.post("/products", async (ctx) => {
-  // Apply schema validation
+  // Validate request body
   if (!ctx.validated.body.ok) {
-    return utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
-        error: "Invalid request data",
-        details: ctx.validated.body.error
-      })
-    );
+    utils.setStatus(ctx, 400);
+    return utils.setResponse(ctx, utils.createResponse(ctx, {
+      error: "Invalid request data",
+      details: ctx.validated.body.error
+    }));
   }
 
   const validation = utils.validate(productSchema, ctx.validated.body.value);
 
-  return utils.handleResult(validation,
-    product => {
+  return utils.handleResult(validation, ctx,
+    (product, ctx) => {
       const sku = product.metadata.sku;
 
-      return utils.match(products.has(sku))
-        .when(true, () => utils.withResponse(
-          utils.withStatus(ctx, 409),
-          utils.createResponse(ctx, { error: "Product SKU already exists" })
-        ))
-        .otherwise(() => {
-          // Store product (side effect)
-          products.set(sku, product);
+      if (products.has(sku)) {
+        utils.setStatus(ctx, 409);
+        return utils.setResponse(ctx, utils.createResponse(ctx, {
+          error: "Product SKU already exists"
+        }));
+      }
 
-          // Return response with location header
-          return utils.withResponse(
-            utils.withHeader(
-              utils.withStatus(ctx, 201),
-              "Location",
-              `/products/${sku}`
-            ),
-            utils.createResponse(ctx, product)
-          );
-        });
+      // Store product (side effect)
+      products.set(sku, product);
+
+      // Return response with location header (mutating context)
+      utils.setStatus(ctx, 201);
+      utils.setHeader(ctx, "Location", `/products/${sku}`);
+      return utils.setResponse(ctx, utils.createResponse(ctx, product));
     },
-    error => utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
+    (error, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
         error: "Invalid product data",
         details: error
-      })
-    )
+      }));
+    }
   );
 });
 
-// GET /products/:sku
+// GET /products/:sku - Get a specific product
 app.get<{ sku: string }>("/products/:sku", async (ctx) => {
-  return utils.handleResult(ctx.validated.params,
-    params => {
+  return utils.handleResult(ctx.validated.params, ctx,
+    (params, ctx) => {
       const sku = params.sku;
       const product = products.get(sku);
 
-      return utils.match(product)
-        .with(match.defined, product => utils.withResponse(
-          ctx,
-          utils.createResponse(ctx, {
-            ...product,
-            _links: {
-              self: `/products/${sku}`,
-              reviews: `/products/${sku}/reviews`,
-              category: `/categories/${product.category}`
-            }
-          })
-        ))
-        .otherwise(() => utils.withResponse(
-          utils.withStatus(ctx, 404),
-          utils.createResponse(ctx, { error: "Product not found" })
-        ));
+      if (!product) {
+        utils.setStatus(ctx, 404);
+        return utils.setResponse(ctx, utils.createResponse(ctx, {
+          error: "Product not found"
+        }));
+      }
+
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
+        ...product,
+        _links: {
+          self: `/products/${sku}`,
+          reviews: `/products/${sku}/reviews`,
+          category: `/categories/${product.category}`
+        }
+      }));
     },
-    error => utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
+    (error, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
         error: "Invalid SKU format",
         details: error
-      })
-    )
+      }));
+    }
   );
 });
 
-// PUT /products/:sku
+// PUT /products/:sku - Update a product
 app.put<{ sku: string }>("/products/:sku", async (ctx) => {
-  // Validate params and body
+  // Validate parameters and body
   if (!ctx.validated.params.ok || !ctx.validated.body.ok) {
-    return utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
-        error: "Invalid request data",
-        details: [
-          ...(ctx.validated.params.ok ? [] : ["Invalid SKU"]),
-          ...(ctx.validated.body.ok ? [] : ["Invalid product data"])
-        ]
-      })
-    );
+    utils.setStatus(ctx, 400);
+    return utils.setResponse(ctx, utils.createResponse(ctx, {
+      error: "Invalid request data",
+      details: [
+        ...(ctx.validated.params.ok ? [] : ["Invalid SKU"]),
+        ...(ctx.validated.body.ok ? [] : ["Invalid product data"])
+      ]
+    }));
   }
 
   const sku = ctx.validated.params.value.sku;
 
-  // Validate body against product schema
-  const validation = utils.validate(productSchema, ctx.validated.body.value);
+  // Validate against product schema
+  const bodyValidation = utils.validate(productSchema, ctx.validated.body.value);
 
-  return utils.handleResult(validation,
-    update => utils.match(products.has(sku))
-      .when(false, () => utils.withResponse(
-        utils.withStatus(ctx, 404),
-        utils.createResponse(ctx, { error: "Product not found" })
-      ))
-      .otherwise(() => {
-        // Update product (side effect with immutability)
-        const existingProduct = products.get(sku)!;
-        const updatedProduct = { ...existingProduct, ...update };
-        products.set(sku, updatedProduct);
+  return utils.handleResult(bodyValidation, ctx,
+    (update, ctx) => {
+      if (!products.has(sku)) {
+        utils.setStatus(ctx, 404);
+        return utils.setResponse(ctx, utils.createResponse(ctx, {
+          error: "Product not found"
+        }));
+      }
 
-        return utils.withResponse(
-          ctx,
-          utils.createResponse(ctx, updatedProduct)
-        );
-      }),
-    error => utils.withResponse(
-      utils.withStatus(ctx, 400),
-      utils.createResponse(ctx, {
+      // Update product with direct mutation (in store)
+      const existingProduct = products.get(sku)!;
+      const updatedProduct = { ...existingProduct, ...update };
+      products.set(sku, updatedProduct);
+
+      return utils.setResponse(ctx, utils.createResponse(ctx, updatedProduct));
+    },
+    (error, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
         error: "Invalid product data",
         details: error
-      })
-    )
+      }));
+    }
   );
 });
 
-// 6. Error Handling
+// DELETE /products/:sku - Delete a product
+app.delete<{ sku: string }>("/products/:sku", async (ctx) => {
+  return utils.handleResult(ctx.validated.params, ctx,
+    (params, ctx) => {
+      const sku = params.sku;
+
+      if (!products.has(sku)) {
+        utils.setStatus(ctx, 404);
+        return utils.setResponse(ctx, utils.createResponse(ctx, {
+          error: "Product not found"
+        }));
+      }
+
+      // Delete product (side effect)
+      products.delete(sku);
+
+      utils.setStatus(ctx, 204);
+      return utils.setResponse(ctx, new Response(null, { status: 204 }));
+    },
+    (error, ctx) => {
+      utils.setStatus(ctx, 400);
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
+        error: "Invalid SKU format",
+        details: error
+      }));
+    }
+  );
+});
+
+// Sample middleware for benchmarking
+app.use(async (ctx, next) => {
+  const start = performance.now();
+  await next();
+  const duration = performance.now() - start;
+  console.log(`Request processed in ${duration.toFixed(2)}ms`);
+});
+
+// Error handling middleware (optimized for performance)
 app.use(async (ctx, next) => {
   try {
     await next();
   } catch (err) {
     console.error("API Error:", err);
 
-    return utils.withResponse(
-      utils.withStatus(ctx, 500),
-      utils.createResponse(ctx, {
-        error: "Internal server error",
-        requestId: crypto.randomUUID()
-      })
-    );
+    utils.setStatus(ctx, 500);
+    utils.setResponse(ctx, utils.createResponse(ctx, {
+      error: "Internal server error",
+      requestId: crypto.randomUUID()
+    }));
   }
 });
 
 // 404 handler (last middleware)
 app.use(async (ctx) => {
   if (!ctx.response) {
-    return utils.withResponse(
-      utils.withStatus(ctx, 404),
-      utils.createResponse(ctx, { error: "Endpoint not found" })
-    );
+    utils.setStatus(ctx, 404);
+    utils.setResponse(ctx, utils.createResponse(ctx, {
+      error: "Endpoint not found"
+    }));
   }
 });
 
-// 7. Start Server
+// Start server with optimized settings
 const port = 3000;
-console.log(`Product API running on http://localhost:${port}`);
-
 app.listen({
   port,
   onListen: ({ hostname, port }) => {
-    console.log(`Product API running on http://${hostname}:${port}`);
+    console.log(`Product API running at http://${hostname}:${port}`);
   }
 });

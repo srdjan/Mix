@@ -2,6 +2,7 @@
 import { type, scope, match } from "arktype";
 
 export type { Infer } from "arktype";
+export { type, scope, match };
 
 // ======== RESULT TYPE FOR ERROR HANDLING ========
 type Result<T, E = Error> =
@@ -32,6 +33,7 @@ type ResourceLinks = Record<string,
 >;
 
 // Enhanced context with response property
+// Now designed for controlled mutation
 type Context = {
   request: Request;
   status: number;
@@ -83,6 +85,7 @@ type WorkflowEvent = WorkflowDefinition["events"][number];
 type WorkflowTransition = WorkflowDefinition["transitions"][number];
 
 // Enhanced workflow instance with per-instance task tracking
+// Now designed for controlled mutation
 type WorkflowInstance = {
   definition: WorkflowDefinition;
   currentState: WorkflowState;
@@ -96,24 +99,9 @@ type WorkflowContext = Context & {
   };
 };
 
-// ======== PATTERN MATCHING UTILITIES ========
-
-// Result type pattern matching
-const handleResult = <T, E, R>(
-  result: Result<T, E>,
-  handlers: {
-    success: (value: T) => R;
-    failure: (error: E) => R;
-  }
-): R =>
-  match(result)
-    .with({ ok: true }, ({ value }) => handlers.success(value))
-    .with({ ok: false }, ({ error }) => handlers.failure(error))
-    .exhaustive();
-
 // ======== CORE FUNCTIONS ========
 
-// Response factory function (pure function instead of context method)
+// Response factory function (pure function)
 const createResponse = (
   ctx: Context,
   data: unknown,
@@ -161,30 +149,57 @@ const safeParseBody = async (request: Request): Promise<Result<unknown, Error>> 
   }
 };
 
-// Functional middleware composition
+// Optimized middleware composition using mutable context
 const compose = <T extends Context>(middlewares: Middleware<T>[]) =>
-  (ctx: T): Promise<void> =>
-    middlewares.reduceRight(
-      (next, middleware) => () => middleware(ctx, next),
-      () => Promise.resolve()
-    )();
+  async (ctx: T): Promise<void> => {
+    let index = -1;
 
-// Context transformation helpers (immutable operations)
-const withStatus = (ctx: Context, status: number): Context => ({
-  ...ctx,
-  status
-});
+    const dispatch = async (i: number): Promise<void> => {
+      if (i <= index) {
+        throw new Error("next() called multiple times");
+      }
 
-const withHeader = (ctx: Context, key: string, value: string): Context => {
-  const headers = new Headers(ctx.headers);
-  headers.set(key, value);
-  return { ...ctx, headers };
+      index = i;
+
+      if (i === middlewares.length) {
+        return;
+      }
+
+      await middlewares[i](ctx, () => dispatch(i + 1));
+    };
+
+    return dispatch(0);
+  };
+
+// Context transformation helpers (mutable for performance)
+const setStatus = (ctx: Context, status: number): Context => {
+  ctx.status = status;
+  return ctx;
 };
 
-const withResponse = (ctx: Context, response: Response): Context => ({
-  ...ctx,
-  response
-});
+const setHeader = (ctx: Context, key: string, value: string): Context => {
+  ctx.headers.set(key, value);
+  return ctx;
+};
+
+const setResponse = (ctx: Context, response: Response): Context => {
+  ctx.response = response;
+  return ctx;
+};
+
+// Result handler optimized for mutable contexts
+const handleResult = <T, E, R>(
+  result: Result<T, E>,
+  ctx: Context,
+  handlers: {
+    success: (value: T, ctx: Context) => R;
+    failure: (error: E, ctx: Context) => R;
+  }
+): R =>
+  match(result)
+    .with({ ok: true }, ({ value }) => handlers.success(value, ctx))
+    .with({ ok: false }, ({ error }) => handlers.failure(error, ctx))
+    .exhaustive();
 
 // ======== ROUTER ========
 type Route = {
@@ -192,15 +207,17 @@ type Route = {
   handler: Middleware;
 };
 
-// Functional router implementation (no classes)
+// CreateRouter factory function
 const createRouter = () => {
-  // Closures for state instead of class properties
-  const staticRoutes: Map<string, Map<string, Middleware>> = new Map();
+  // Fast-path static routes
+  const staticRoutes = new Map<string, Map<string, Middleware>>();
+
+  // Fallback dynamic routes
   const dynamicRoutes: Route[] = [];
 
-  // Router functions
+  // Add route to router
   const add = (method: string, path: string, handler: Middleware): void => {
-    // Pattern match on path type
+    // Pattern match on path type for optimization
     match(path)
       .when(p => !p.includes(':') && !p.includes('*'), () => {
         // Static route optimization
@@ -218,40 +235,38 @@ const createRouter = () => {
       });
   };
 
+  // Find matching route
   const findMatch = (request: Request): { handler: Middleware; params: Record<string, string> } | null => {
     const url = new URL(request.url);
     const method = request.method;
     const path = url.pathname;
 
-    // Pattern match on route type
-    return match([method, path])
-      .when(
-        ([m, p]) => staticRoutes.has(m) && staticRoutes.get(m)!.has(p),
-        ([m, p]) => ({
-          handler: staticRoutes.get(m)!.get(p)!,
-          params: {}
-        })
-      )
-      .otherwise(([m, p]) => {
-        // Find first matching dynamic route
-        for (const route of dynamicRoutes) {
-          const match = route.pattern.exec({
-            pathname: p,
-            method: m
-          });
+    // Fast-path: check static routes first
+    if (staticRoutes.has(method) && staticRoutes.get(method)!.has(path)) {
+      return {
+        handler: staticRoutes.get(method)!.get(path)!,
+        params: {}
+      };
+    }
 
-          if (match) {
-            return {
-              handler: route.handler,
-              params: match.pathname.groups
-            };
-          }
-        }
-        return null;
+    // Fallback: check dynamic routes
+    for (const route of dynamicRoutes) {
+      const match = route.pattern.exec({
+        pathname: path,
+        method
       });
+
+      if (match) {
+        return {
+          handler: route.handler,
+          params: match.pathname.groups
+        };
+      }
+    }
+
+    return null;
   };
 
-  // Return router functions
   return {
     add,
     match: findMatch
@@ -260,47 +275,61 @@ const createRouter = () => {
 
 // ======== WORKFLOW FUNCTIONS ========
 
-// Check if transition is possible
+// Workflow utility functions optimized for performance
+// Now using controlled mutation
+
+// Check if transition is possible (pure)
 const canTransition = (instance: WorkflowInstance, event: WorkflowEvent): boolean =>
   instance.definition.transitions.some(t =>
     t.from === instance.currentState && t.on === event
   );
 
-// Get all pending tasks
+// Get all pending tasks (pure with shallow copy)
 const getPendingTasks = (instance: WorkflowInstance): Array<WorkflowTransition["task"]> =>
   [...instance.tasks];
 
-// Assign a task to workflow (pure function)
-const assignTask = (instance: WorkflowInstance, task: WorkflowTransition["task"]): WorkflowInstance => ({
-  ...instance,
-  tasks: [...instance.tasks, task]
-});
+// Assign a task to workflow (mutating)
+const assignTask = (instance: WorkflowInstance, task: WorkflowTransition["task"]): void => {
+  instance.tasks.push(task);
+};
 
-// Apply transition to workflow with pattern matching
-const applyTransition = (instance: WorkflowInstance, event: WorkflowEvent): WorkflowInstance => {
-  const matchingTransition = instance.definition.transitions.find(t =>
+// Apply transition to workflow (mutating)
+const applyTransition = (instance: WorkflowInstance, event: WorkflowEvent): boolean => {
+  const transition = instance.definition.transitions.find(t =>
     t.from === instance.currentState && t.on === event
   );
 
-  return match(matchingTransition)
-    .with(match.defined, (transition) => {
-      // Create new history entry
-      const historyEntry = {
-        from: transition.from,
-        to: transition.to,
-        at: new Date()
-      };
+  if (!transition) {
+    return false;
+  }
 
-      // Return new instance with updated state and history
-      return {
-        ...instance,
-        currentState: transition.to,
-        history: [...instance.history, historyEntry],
-        tasks: [...instance.tasks, transition.task]
-      };
-    })
-    .otherwise(() => instance);
+  // Create history entry
+  const historyEntry = {
+    from: transition.from,
+    to: transition.to,
+    at: new Date()
+  };
+
+  // Update state and history in-place
+  instance.history.push(historyEntry);
+  instance.currentState = transition.to;
+
+  // Add task if present
+  if (transition.task) {
+    instance.tasks.push(transition.task);
+  }
+
+  return true;
 };
+
+// Find transition for event
+const findTransition = (
+  instance: WorkflowInstance,
+  event: WorkflowEvent
+): WorkflowTransition | undefined =>
+  instance.definition.transitions.find(t =>
+    t.from === instance.currentState && t.on === event
+  );
 
 // ======== APP FACTORY ========
 export const App = () => {
@@ -308,27 +337,23 @@ export const App = () => {
   const router = createRouter();
   const controller = new AbortController();
 
-  // Context factory with proper initialization
+  // Context factory (optimized)
   const createContext = async (request: Request): Promise<Context> => {
     const url = new URL(request.url);
     const queryParams = Object.fromEntries(url.searchParams);
     const headerParams = Object.fromEntries(request.headers);
 
     // Initialize body with proper error handling
-    const bodyResult = match(request.method)
-      .when(
-        m => m === 'GET' || m === 'HEAD',
-        () => ({ ok: true, value: null } as ValidationResult<unknown>)
-      )
-      .otherwise(async () => {
-        const parsed = await safeParseBody(request);
-        return match(parsed)
-          .with({ ok: true }, ({ value }) => ({ ok: true, value } as ValidationResult<unknown>))
-          .with({ ok: false }, ({ error }) => ({ ok: false, error: [error.message] } as ValidationResult<unknown>))
-          .exhaustive();
-      });
+    let bodyResult: ValidationResult<unknown> = { ok: true, value: null };
 
-    // Use validate function to validate query params and headers
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      const parsed = await safeParseBody(request);
+      bodyResult = parsed.ok
+        ? { ok: true, value: parsed.value }
+        : { ok: false, error: [parsed.error.message] };
+    }
+
+    // Validate header and query params
     const headerSchema = type('record<string, string>');
     const querySchema = type('record<string, string>');
 
@@ -343,7 +368,7 @@ export const App = () => {
       }),
       state: {},
       validated: {
-        body: await bodyResult,
+        body: bodyResult,
         params: { ok: true, value: {} },
         query: queryValidation,
         headers: headerValidation
@@ -351,9 +376,9 @@ export const App = () => {
     };
   };
 
-  // Main request handler with proper error handling
+  // Main request handler with optimized flow
   const handleRequest = async (request: Request): Promise<Response> => {
-    let ctx = await createContext(request);
+    const ctx = await createContext(request);
 
     try {
       // Apply global middlewares first
@@ -366,30 +391,28 @@ export const App = () => {
         }
       }
 
-      // Route matching with pattern matching
+      // Route matching
       const routeMatch = router.match(request);
 
-      return match(routeMatch)
-        .with(match.defined, async (match) => {
-          // Update params in context using validate function
-          const paramsSchema = type('record<string, string>');
-          const paramsValidation = validate(paramsSchema, match.params);
+      if (routeMatch) {
+        // Set params directly
+        const paramsSchema = type('record<string, string>');
+        ctx.validated.params = validate(paramsSchema, routeMatch.params);
 
-          ctx = {
-            ...ctx,
-            validated: {
-              ...ctx.validated,
-              params: paramsValidation
-            }
-          };
+        // Execute route handler
+        await routeMatch.handler(ctx, () => Promise.resolve());
 
-          // Execute route handler
-          await match.handler(ctx, () => Promise.resolve());
+        // Return response if produced
+        if (ctx.response) {
+          return ctx.response;
+        }
 
-          // Return response if produced
-          return ctx.response || new Response("No response", { status: 204 });
-        })
-        .otherwise(() => new Response("Not Found", { status: 404 }));
+        // No response produced by handler
+        return new Response(null, { status: 204 });
+      }
+
+      // No matching route
+      return new Response("Not Found", { status: 404 });
 
     } catch (error) {
       console.error("Request handling error:", error);
@@ -403,76 +426,82 @@ export const App = () => {
     }
   };
 
-  // Workflow engine factory function
+  // Workflow engine factory function (optimized)
   const createWorkflowEngine = <
     S extends WorkflowState = WorkflowState,
     E extends WorkflowEvent = WorkflowEvent
   >() => {
-    // Closure for state
+    // Workflow definition store
     let definition: WorkflowDefinition = {
       states: [],
       events: [],
       transitions: []
     };
 
+    // Define transition with controlled mutation
     const defineTransition = (config: WorkflowTransition) => {
       const validation = validate(transitionSchema, config);
 
-      return match(validation)
-        .with({ ok: true }, ({ value }) => {
-          // Update definition with new transition
-          definition.transitions.push(value);
-          definition.states = Array.from(new Set([
-            ...definition.states,
-            value.from,
-            value.to
-          ]));
-          definition.events = Array.from(new Set([
-            ...definition.events,
-            value.on
-          ]));
+      if (!validation.ok) {
+        throw new Error(`Invalid transition: ${validation.error.join(", ")}`);
+      }
 
-          return engine;
-        })
-        .with({ ok: false }, ({ error }) => {
-          throw new Error(`Invalid transition: ${error.join(", ")}`);
-        })
-        .exhaustive();
+      // Update definition in-place
+      definition.transitions.push(config);
+
+      // Update states and events with Set for deduplication
+      const stateSet = new Set(definition.states);
+      stateSet.add(config.from);
+      stateSet.add(config.to);
+      definition.states = Array.from(stateSet);
+
+      const eventSet = new Set(definition.events);
+      eventSet.add(config.on);
+      definition.events = Array.from(eventSet);
+
+      return engine;
     };
 
+    // Load definition with validation
     const load = (json: unknown) => {
       const validation = validate<WorkflowDefinition>(workflowDefinitionSchema, json);
 
-      return match(validation)
-        .with({ ok: true }, ({ value }) => {
-          definition = value;
-          return engine;
-        })
-        .with({ ok: false }, ({ error }) => {
-          throw new Error(`Invalid workflow definition: ${error.join(", ")}`);
-        })
-        .exhaustive();
+      if (!validation.ok) {
+        throw new Error(`Invalid workflow definition: ${validation.error.join(", ")}`);
+      }
+
+      definition = validation.value;
+      return engine;
     };
 
-    const toJSON = (): WorkflowDefinition =>
-      structuredClone(definition);
+    // Create JSON representation
+    const toJSON = (): WorkflowDefinition => ({
+      states: [...definition.states],
+      events: [...definition.events],
+      transitions: definition.transitions.map(t => ({ ...t })),
+      initial: definition.initial
+    });
 
+    // Create workflow handler
     const createHandler = (path: string, handler: Handler<WorkflowContext>) => {
       const enhancedHandler: Middleware = async (baseCtx, next) => {
         // Create workflow instance for this request
         const workflowInstance: WorkflowInstance = {
-          definition: structuredClone(definition),
+          definition: {
+            states: [...definition.states],
+            events: [...definition.events],
+            transitions: definition.transitions,
+            initial: definition.initial
+          },
           currentState: definition.initial || definition.states[0],
           history: [],
           tasks: []
         };
 
         // Create workflow-enhanced context
-        const workflowCtx: WorkflowContext = {
-          ...baseCtx,
-          workflow: {
-            instance: workflowInstance
-          }
+        const workflowCtx = baseCtx as WorkflowContext;
+        workflowCtx.workflow = {
+          instance: workflowInstance
         };
 
         await handler(workflowCtx);
@@ -493,7 +522,7 @@ export const App = () => {
     return engine;
   };
 
-  // Type-safe route registration with generic parameters
+  // Type-safe route registration
   const route = <
     P extends Record<string, string> = Record<string, string>,
     Q extends Record<string, string> = Record<string, string>,
@@ -564,17 +593,20 @@ export const App = () => {
 
     // Utility functions exposed for use in handlers
     utils: {
-      withStatus,
-      withHeader,
-      withResponse,
+      setStatus,
+      setHeader,
+      setResponse,
       createResponse,
+      handleResult,
+      match,
+      validate,
+
+      // Workflow utilities
       canTransition,
       getPendingTasks,
       assignTask,
       applyTransition,
-      validate,
-      handleResult,
-      match
+      findTransition
     }
   };
 
