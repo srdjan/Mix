@@ -1,0 +1,17 @@
+{
+  "version": "4",
+  "specifiers": {
+    "npm:arktype@1.0.29-alpha": "1.0.29-alpha"
+  },
+  "npm": {
+    "arktype@1.0.29-alpha": {
+      "integrity": "sha512-glMLgVhIQRSkR3tymiS+POAcWVJH09sfrgic0jHnyFL8BlhHAJZX2BzdImU9zYr1y9NBqy+U93ZNrRTHXsKRDw=="
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@std/assert@1",
+      "npm:arktype@1.0.29-alpha"
+    ]
+  }
+}
