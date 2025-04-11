@@ -283,6 +283,37 @@ export const handleResult = <T, E, R>(
   .with({ ok: false }, (r) => handlers.failure((r as { ok: false; error: E }).error, ctx))
   .exhaustive();
 
+// New utility functions
+export const handleError = (ctx: Context, status: number, message: string, details?: unknown): Context => {
+  ctx.status = status;
+  ctx.response = new Response(JSON.stringify({ error: message, details }), {
+    status,
+    headers: { "Content-Type": "application/json" }
+  });
+  return ctx;
+};
+
+export const createResponse = (ctx: Context, data: unknown, options?: { 
+  links?: Record<string, unknown>; 
+  meta?: Record<string, unknown> 
+}): Response => {
+  const responseBody = {
+    data,
+    ...(options?.links ? { _links: options.links } : {}),
+    ...(options?.meta ? { _meta: options.meta } : {})
+  };
+
+  return new Response(JSON.stringify(responseBody), {
+    status: ctx.status || 200,
+    headers: { "Content-Type": "application/json" }
+  });
+};
+
+export const createLinks = (resourcePath: string, id: string): Record<string, string> => ({
+  self: `/${resourcePath}/${id}`,
+  collection: `/${resourcePath}`
+});
+
 // ======== ROUTER ========
 export const createRouter = () => {
   const staticRoutes = new Map<string, Map<string, Middleware>>();
@@ -578,7 +609,10 @@ export const App = () => {
       getPendingTasks,
       assignTask,
       applyTransition,
-      findTransition
+      findTransition,
+      handleError,
+      createResponse,
+      createLinks
     }
   };
 

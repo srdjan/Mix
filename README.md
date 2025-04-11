@@ -1,6 +1,6 @@
 # Mix 🚀
 
-**Type-Safe API & Workflow Microframework for Deno**  
+**Type-Safe API & Workflow Microframework for Deno**
 *Build Robust REST APIs and Stateful Workflows with Confidence*
 
 *Powered by [Deno](https://deno.land) and [ArkType](https://arktype.io)*
@@ -11,33 +11,45 @@
 
 ```ts
 // Simple API Example
-const app = Mix()
-  .get("/hello", (ctx) => ctx.json({ message: "Hello World" }))
-  .listen({ port: 3000 });
+const app = App();
+const { utils } = app;
+
+app.get("/hello", (ctx) => {
+  ctx.response = utils.createResponse(ctx, { message: "Hello World" });
+});
+
+app.listen(3000);
 ```
 
 ## Features ✨
 
-- **Type-Safe Everything**  
+- **Type-Safe Everything**
   From route params to workflow states - TypeScript first
-- **ArkType Integration**  
+- **ArkType Integration**
   Runtime validation with perfect type inference
-- **HATEOAS Ready**  
-  Built-in hypermedia support
-- **Workflow Engine**  
+- **HATEOAS Ready**
+  Built-in hypermedia support with `createLinks` utility
+- **Workflow Engine**
   State machines with audit trails
-- **JSON Schema Persistence**  
-  Save/load workflow definitions
-- **Lightweight Core**  
+- **Consistent Error Handling**
+  Standardized error responses with `handleError` utility
+- **Elegant Response Creation**
+  Clean API responses with `createResponse` utility
+- **Lightweight Core**
   <5KB base, zero dependencies
-- **Deno Native**  
+- **Deno Native**
   ES Modules, top-level await, modern JS
 
 ## Installation 📦
 
-```bash
-# Import directly from Deno.land
-import { Mix } from "https://deno.land/x/Mix/mod.ts";
+```typescript
+// Import directly from Deno.land
+import { App, type, match } from "./lib/mix.ts";
+
+// Access utility functions
+const app = App();
+const { utils } = app;
+const { handleError, createResponse, createLinks } = utils;
 ```
 
 Permissions (add to deno.json):
@@ -57,59 +69,93 @@ Permissions (add to deno.json):
 ### Basic API
 
 ```typescript
-const api = Mix();
+const app = App();
+const { utils } = app;
+const { handleError, createResponse, createLinks } = utils;
 
 // Simple endpoint
-api.get("/users", (ctx) => {
-  ctx.json([{ id: 1, name: "Alice" }]);
+app.get("/users", (ctx): void => {
+  const users = [{ id: 1, name: "Alice" }];
+  ctx.response = createResponse(ctx, users);
 });
 
-// Validated POST
-api.post("/users", {
-  schema: {
-    body: type({
-      name: "string",
-      age: "integer>18"
-    })
-  },
-  handler: (ctx) => {
-    const user = ctx.validated.body.data;
-    ctx.json({ ...user, id: crypto.randomUUID() }, { status: 201 });
+// Validated POST with type safety
+app.post("/users", (ctx): void => {
+  if (!ctx.validated.body.ok) {
+    handleError(ctx, 400, "Invalid user data", ctx.validated.body.error);
+    return;
   }
+
+  const user = ctx.validated.body.value;
+  const userId = crypto.randomUUID();
+
+  ctx.status = 201;
+  ctx.response = createResponse(ctx,
+    { ...user, id: userId },
+    { links: createLinks('users', userId) }
+  );
 });
 
-api.listen({ port: 8000 });
+app.listen(8000);
 ```
 
 ### Workflow Management
 
 ```typescript
-const workflow = Mix().workflow<"Draft" | "Published", "Publish">();
+type ArticleState = "Draft" | "Published";
+type ArticleEvent = "Publish";
+
+const app = App();
+const { utils } = app;
+const { handleError, createResponse, createLinks } = utils;
+
+// Create workflow engine
+const workflow = app.workflow();
 
 // Define transitions
-workflow
-  .load({
-    states: ["Draft", "Published"],
-    events: ["Publish"],
-    transitions: [{
-      from: "Draft",
-      to: "Published",
-      on: "Publish",
-      task: { assign: "editor", message: "Review article" }
-    }]
-  })
-  .createHandler("/articles/:id/publish", (ctx) => {
-    ctx.applyTransition("Publish");
-    ctx.json({
-      state: ctx.workflow.currentState,
-      tasks: ctx.workflow.getPendingTasks()
+workflow.load({
+  states: ["Draft", "Published"],
+  events: ["Publish"],
+  transitions: [{
+    from: "Draft",
+    to: "Published",
+    on: "Publish",
+    task: { assign: "editor", message: "Review article {id}" }
+  }],
+  initial: "Draft"
+});
+
+// Create workflow handler
+workflow.createHandler("/articles/:id/publish", (ctx): void => {
+  if (!ctx.validated.params.ok) {
+    handleError(ctx, 400, "Invalid article ID", ctx.validated.params.error);
+    return;
+  }
+
+  const articleId = ctx.validated.params.value.id;
+  const { instance } = ctx.workflow;
+
+  // Apply transition
+  const success = utils.applyTransition(instance, "Publish");
+
+  if (!success) {
+    handleError(ctx, 400, "Cannot publish article", {
+      currentState: instance.currentState
     });
-  });
+    return;
+  }
+
+  // Return response with HATEOAS links
+  ctx.response = createResponse(ctx, {
+    state: instance.currentState,
+    tasks: utils.getPendingTasks(instance)
+  }, { links: createLinks('articles', articleId) });
+});
 ```
 
 ## Documentation 📚
 
-Explore full capabilities at:  
+Explore full capabilities at:
 [📖 Mix Documentation](https://Mixframework.org/docs)
 
 | Section               | Description                          |
@@ -118,6 +164,7 @@ Explore full capabilities at:
 | [Workflow Guide](./docs/workflow-guide.md) | State machines, Transitions, History |
 | [Best Practices](./docs/best-practices.md) | Project structure, Error handling    |
 | [API Reference](./docs/api-reference.md)  | Full type definitions and options    |
+| [Utility Functions](./docs/utility-functions.md) | Error handling, Response creation   |
 
 ## Contributing 🤝
 

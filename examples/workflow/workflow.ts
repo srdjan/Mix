@@ -1,4 +1,4 @@
-import { App, Context } from "../../lib/mix.ts";
+import { App, Context, handleError, createResponse, createLinks } from "../../lib/mix.ts";
 
 // Workflow Types
 type DocState = "Draft" | "Review" | "Approved" | "Rejected" | "Archived";
@@ -50,33 +50,19 @@ const workflowDefinition = {
 
 docWorkflow.load(workflowDefinition);
 
-// Helper Functions
-const handleError = (ctx: Context, status: number, message: string, details?: unknown) => {
-  ctx.status = status;
-  ctx.response = new Response(JSON.stringify({ error: message, details }), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
-};
-
-const createResponse = (ctx: Context, data: unknown, options?: { links?: Record<string, unknown> }) => {
-  return new Response(JSON.stringify({ data, ...(options?.links ? { _links: options.links } : {}) }), {
-    status: ctx.status || 200,
-    headers: { "Content-Type": "application/json" }
-  });
-};
-
-const createLinks = (docId: string) => ({
-  self: `/documents/${docId}`,
+// Helper Functions - Use createLinks from lib/mix.ts with custom additions
+const getDocumentLinks = (docId: string) => ({
+  ...createLinks('documents', docId),
   transitions: `/documents/${docId}/transitions`,
   history: `/documents/${docId}/history`,
   workflow: "/workflow"
 });
 
 // Document Creation Handler
-app.post("/documents", (ctx: Context) => {
+app.post("/documents", (ctx: Context): void => {
   if (!ctx.validated.body.ok) {
-    return handleError(ctx, 400, "Invalid document data", ctx.validated.body.error);
+    handleError(ctx, 400, "Invalid document data", ctx.validated.body.error);
+    return;
   }
 
   // Use the body value directly
@@ -91,24 +77,26 @@ app.post("/documents", (ctx: Context) => {
   documents.set(doc.id, doc);
 
   ctx.status = 201;
-  ctx.response = createResponse(ctx, doc, { links: createLinks(doc.id) });
+  ctx.response = createResponse(ctx, doc, { links: getDocumentLinks(doc.id) });
 });
 
 // Transition Handler
-
-app.post("/documents/:id/transitions", (ctx: Context) => {
-  // Validate request
+app.post("/documents/:id/transitions", (ctx: Context): void => {
   if (!ctx.validated.params.ok || !ctx.validated.body.ok) {
-    return handleError(ctx, 400, "Invalid request data", [
+    handleError(ctx, 400, "Invalid request data", [
       ...(ctx.validated.params.ok ? [] : ["Invalid document ID"]),
       ...(ctx.validated.body.ok ? [] : ["Invalid transition data"])
     ]);
+    return;
   }
 
   // Get document
   const docId = ctx.validated.params.value.id;
   const doc = documents.get(docId);
-  if (!doc) return handleError(ctx, 404, "Document not found");
+  if (!doc) {
+    handleError(ctx, 404, "Document not found");
+    return;
+  }
 
   // Use the body value directly
   const transitionReq = ctx.validated.body.value as TransitionRequest;
@@ -120,14 +108,14 @@ app.post("/documents/:id/transitions", (ctx: Context) => {
   );
 
   if (!transition) {
-    return handleError(ctx, 400, "Invalid transition", {
+    handleError(ctx, 400, "Invalid transition", {
       currentState: doc.state,
       requestedEvent: event
     });
+    return;
   }
 
   try {
-    // Update document state
     const prevState = doc.state;
     doc.state = transition.to as DocState;
     doc.history.push({
@@ -156,7 +144,7 @@ app.post("/documents/:id/transitions", (ctx: Context) => {
       currentState: doc.state,
       availableTransitions,
       document: doc
-    }, { links: createLinks(doc.id) });
+    }, { links: getDocumentLinks(doc.id) });
   } catch (error) {
     handleError(ctx, 500, "Transition failed",
       error instanceof Error ? error.message : String(error));
@@ -167,23 +155,28 @@ app.post("/documents/:id/transitions", (ctx: Context) => {
 const getDocumentById = (id: string) => documents.get(id);
 
 // Document Retrieval Handler
-app.get<{ id: string }>("/documents/:id", (ctx) => {
+app.get<{ id: string }>("/documents/:id", (ctx: Context): void => {
   if (!ctx.validated.params.ok) {
-    return handleError(ctx, 400, "Invalid document ID", ctx.validated.params.error);
+    handleError(ctx, 400, "Invalid document ID", ctx.validated.params.error);
+    return;
   }
 
   const docId = ctx.validated.params.value.id;
   const doc = getDocumentById(docId);
 
-  if (!doc) return handleError(ctx, 404, "Document not found");
+  if (!doc) {
+    handleError(ctx, 404, "Document not found");
+    return;
+  }
 
-  ctx.response = createResponse(ctx, doc, { links: createLinks(doc.id) });
+  ctx.response = createResponse(ctx, doc, { links: getDocumentLinks(doc.id) });
 });
 
 // Document History Handler
-app.get<{ id: string }>("/documents/:id/history", (ctx) => {
+app.get<{ id: string }>("/documents/:id/history", (ctx: Context): void => {
   if (!ctx.validated.params.ok) {
-    return handleError(ctx, 400, "Invalid document ID", ctx.validated.params.error);
+    handleError(ctx, 400, "Invalid document ID", ctx.validated.params.error);
+    return;
   }
 
   const docId = ctx.validated.params.value.id;
@@ -193,7 +186,7 @@ app.get<{ id: string }>("/documents/:id/history", (ctx) => {
 });
 
 // Workflow Definition Endpoint
-app.get("/workflow", (ctx) => {
+app.get("/workflow", (ctx: Context): void => {
   ctx.response = createResponse(ctx, docWorkflow.toJSON());
 });
 
@@ -205,6 +198,6 @@ function sendEmail(to: string, message: string) {
 // Start server
 const port = 3000;
 app.listen(port);
-console.log(`Product API running at http://localhost:${port}`);
+console.log(`Document Workflow API running at http://localhost:${port}`);
 
 

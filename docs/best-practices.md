@@ -61,12 +61,12 @@ Always handle errors explicitly using Result types:
 const findUser = async (id: string): Promise<Result<User, UserError>> => {
   try {
     const user = await db.users.findOne({ id });
-    return user 
+    return user
       ? { ok: true, value: user }
       : { ok: false, error: { code: "USER_NOT_FOUND", message: `User ${id} not found` } };
   } catch (err) {
-    return { 
-      ok: false, 
+    return {
+      ok: false,
       error: { code: "DB_ERROR", message: err.message }
     };
   }
@@ -77,8 +77,8 @@ app.get<{ id: string }>("/users/:id", async (ctx) => {
   return utils.handleResult(ctx.validated.params, ctx,
     async (params, ctx) => {
       const result = await findUser(params.id);
-      
-      return utils.handleResult(result, ctx, 
+
+      return utils.handleResult(result, ctx,
         (user, ctx) => utils.setResponse(ctx, utils.createResponse(ctx, user)),
         (error, ctx) => {
           if (error.code === "USER_NOT_FOUND") {
@@ -92,9 +92,9 @@ app.get<{ id: string }>("/users/:id", async (ctx) => {
     },
     (errors, ctx) => {
       utils.setStatus(ctx, 400);
-      return utils.setResponse(ctx, utils.createResponse(ctx, { 
-        error: "Invalid user ID", 
-        details: errors 
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
+        error: "Invalid user ID",
+        details: errors
       }));
     }
   );
@@ -107,7 +107,7 @@ app.get<{ id: string }>("/users/:id", async (ctx) => {
 
 Structure your application with clear boundaries:
 
-```
+```text
 src/
 ├── domain/           # Business domain types and logic
 │   ├── user.ts       # User domain
@@ -148,19 +148,19 @@ Organize routes by domain resource:
 export const registerUserRoutes = (app) => {
   // List users with pagination and filtering
   app.get("/users", listUsers);
-  
+
   // Get user by ID
   app.get<{ id: string }>("/users/:id", getUser);
-  
+
   // Create new user
   app.post("/users", createUser);
-  
+
   // Update user
   app.put<{ id: string }>("/users/:id", updateUser);
-  
+
   // Delete user
   app.delete<{ id: string }>("/users/:id", deleteUser);
-  
+
   // User-specific sub-resources
   app.get<{ id: string }>("/users/:id/preferences", getUserPreferences);
   app.put<{ id: string }>("/users/:id/preferences", updateUserPreferences);
@@ -219,14 +219,14 @@ Use pattern matching for exhaustive type checking:
 ```typescript
 import { match } from "./mod.ts";
 
-type UserState = 
+type UserState =
   | { status: "guest" }
   | { status: "registered", id: string }
   | { status: "verified", id: string, email: string }
   | { status: "admin", id: string, permissions: string[] };
 
 // Exhaustive handling of all states
-const getUserPrivileges = (user: UserState): string[] => 
+const getUserPrivileges = (user: UserState): string[] =>
   match(user)
     .with({ status: "guest" }, () => [])
     .with({ status: "registered" }, () => ["read"])
@@ -251,14 +251,14 @@ Prefer tagged unions and pattern matching over type assertions:
 const processInput = (input: unknown) => {
   // Bad: Type assertion
   const data = input as { id: string; value: number };
-  
+
   // Good: Runtime validation
   const validation = utils.validate(
     type({ id: "string", value: "number" }),
     input
   );
-  
-  return utils.handleResult(validation, 
+
+  return utils.handleResult(validation,
     data => processValidData(data),
     error => handleValidationError(error)
   );
@@ -277,13 +277,13 @@ const processRequest = (ctx: Context) => {
   // Directly mutate context in performance-critical paths
   utils.setStatus(ctx, 200);
   utils.setHeader(ctx, "Content-Type", "application/json");
-  
+
   // Use mutation for large data structures that don't need history
   const results = ctx.state.searchResults;
-  
+
   // Sort in-place for large arrays
   results.sort((a, b) => a.relevance - b.relevance);
-  
+
   return utils.setResponse(ctx, utils.createResponse(ctx, { results }));
 };
 ```
@@ -299,7 +299,7 @@ app.get("/dashboard", (ctx) => {
   ctx.state.getRecentOrders = () => db.orders.findRecent();
   ctx.state.getPopularProducts = () => db.products.findPopular();
   ctx.state.getUserMetrics = () => analytics.getUserMetrics();
-  
+
   // Let the handler decide what to compute
   return dashboardHandler(ctx);
 });
@@ -307,21 +307,21 @@ app.get("/dashboard", (ctx) => {
 // Handler only computes what it needs
 const dashboardHandler = async (ctx: Context) => {
   const view = new URL(ctx.request.url).searchParams.get("view") || "orders";
-  
+
   // Only compute what's needed for the requested view
   if (view === "orders") {
     const orders = await ctx.state.getRecentOrders();
     return utils.setResponse(ctx, utils.createResponse(ctx, { orders }));
   }
-  
+
   if (view === "products") {
     const products = await ctx.state.getPopularProducts();
     return utils.setResponse(ctx, utils.createResponse(ctx, { products }));
   }
-  
+
   // Default dashboard with minimal data
-  return utils.setResponse(ctx, utils.createResponse(ctx, { 
-    message: "Select a view" 
+  return utils.setResponse(ctx, utils.createResponse(ctx, {
+    message: "Select a view"
   }));
 };
 ```
@@ -342,7 +342,7 @@ const dbPool = createPool({
 // Database middleware to provide connections
 app.use(async (ctx, next) => {
   const connection = await dbPool.acquire();
-  
+
   try {
     ctx.state.db = connection;
     await next();
@@ -369,15 +369,15 @@ orderWorkflow.load({
     // From Draft, can only Submit or Cancel
     { from: "Draft", to: "Submitted", on: "Submit" },
     { from: "Draft", to: "Cancelled", on: "Cancel" },
-    
+
     // From Submitted, can Process or Cancel
     { from: "Submitted", to: "Processing", on: "Process" },
     { from: "Submitted", to: "Cancelled", on: "Cancel" },
-    
+
     // From Processing, can Ship or Cancel
     { from: "Processing", to: "Shipped", on: "Ship" },
     { from: "Processing", to: "Cancelled", on: "Cancel" },
-    
+
     // From Shipped, can only Deliver
     { from: "Shipped", to: "Delivered", on: "Deliver" },
   ],
@@ -385,7 +385,7 @@ orderWorkflow.load({
 });
 
 // Use pattern matching for state-dependent behavior
-const getOrderActions = (order: Order): string[] => 
+const getOrderActions = (order: Order): string[] =>
   match(order.state)
     .with("Draft", () => ["Submit", "Cancel"])
     .with("Submitted", () => ["Process", "Cancel"])
@@ -408,11 +408,11 @@ orderWorkflow.createHandler("/orders/:id/events", async (ctx) => {
       const order = await db.orders.findOne(params.id);
       if (!order) {
         utils.setStatus(ctx, 404);
-        return utils.setResponse(ctx, utils.createResponse(ctx, { 
-          error: "Order not found" 
+        return utils.setResponse(ctx, utils.createResponse(ctx, {
+          error: "Order not found"
         }));
       }
-      
+
       // Validate body
       return utils.handleResult(
         utils.validate(
@@ -423,7 +423,7 @@ orderWorkflow.createHandler("/orders/:id/events", async (ctx) => {
         async (body, ctx) => {
           const { event } = body;
           const instance = ctx.workflow.instance;
-          
+
           // Check if transition is valid
           if (!utils.canTransition(instance, event)) {
             utils.setStatus(ctx, 400);
@@ -433,30 +433,30 @@ orderWorkflow.createHandler("/orders/:id/events", async (ctx) => {
               event: event
             }));
           }
-          
+
           // Apply transition
           const success = utils.applyTransition(instance, event);
-          
+
           if (success) {
             // Update order with new state
             order.state = instance.currentState;
             await db.orders.update(order.id, order);
-            
+
             // Find transition for task info
             const transition = utils.findTransition(instance, event);
-            
+
             // Process side effects
             if (transition?.task) {
               await processOrderTask(order, transition.task);
             }
-            
+
             return utils.setResponse(ctx, utils.createResponse(ctx, {
               order,
               state: order.state,
               availableEvents: getOrderActions(order)
             }));
           }
-          
+
           // Transition failed
           utils.setStatus(ctx, 500);
           return utils.setResponse(ctx, utils.createResponse(ctx, {
@@ -485,13 +485,44 @@ orderWorkflow.createHandler("/orders/:id/events", async (ctx) => {
 
 ## Error Handling
 
+### Using Utility Functions
+
+Mix provides utility functions for consistent error handling and response creation:
+
+```typescript
+// Import from lib/mix.ts
+import { App } from "./lib/mix.ts";
+const app = App();
+const { utils } = app;
+const { handleError, createResponse, createLinks } = utils;
+
+// Use in handlers
+app.get<{ id: string }>("/products/:id", (ctx): void => {
+  if (!ctx.validated.params.ok) {
+    handleError(ctx, 400, "Invalid product ID", ctx.validated.params.error);
+    return;
+  }
+
+  const product = getProductById(ctx.validated.params.value.id);
+
+  if (!product) {
+    handleError(ctx, 404, "Product not found");
+    return;
+  }
+
+  ctx.response = createResponse(ctx, product, {
+    links: createLinks('products', product.id)
+  });
+});
+```
+
 ### Domain-Specific Errors
 
 Define domain-specific error types:
 
 ```typescript
 // Domain error types
-type OrderErrorCode = 
+type OrderErrorCode =
   | "INVALID_ORDER"
   | "PRODUCT_UNAVAILABLE"
   | "PAYMENT_FAILED"
@@ -528,7 +559,7 @@ const processOrder = async (order: Order): Promise<Result<Order, OrderError>> =>
       )
     };
   }
-  
+
   // Process payment
   const paymentResult = await processPayment(order);
   if (!paymentResult.ok) {
@@ -541,21 +572,21 @@ const processOrder = async (order: Order): Promise<Result<Order, OrderError>> =>
       )
     };
   }
-  
+
   // Update order
   const updatedOrder = {
     ...order,
     status: "PAID",
     paymentId: paymentResult.value.id
   };
-  
+
   return { ok: true, value: updatedOrder };
 };
 ```
 
 ### Status Code Mapping
 
-Map domain errors to appropriate HTTP status codes:
+Map domain errors to appropriate HTTP status codes and use the `handleError` utility:
 
 ```typescript
 // Error to status code mapping
@@ -574,32 +605,28 @@ const getStatusForError = (error: OrderError): number => {
   }
 };
 
-// Use in API handlers
-app.post("/orders", async (ctx) => {
-  return utils.handleResult(ctx.validated.body, ctx,
-    async (orderData, ctx) => {
-      const result = await processOrder(orderData);
-      
-      return utils.handleResult(result, ctx,
-        (order, ctx) => {
-          utils.setStatus(ctx, 201);
-          utils.setHeader(ctx, "Location", `/orders/${order.id}`);
-          return utils.setResponse(ctx, utils.createResponse(ctx, order));
-        },
-        (error, ctx) => {
-          utils.setStatus(ctx, getStatusForError(error));
-          return utils.setResponse(ctx, utils.createResponse(ctx, { error }));
-        }
-      );
-    },
-    (errors, ctx) => {
-      utils.setStatus(ctx, 400);
-      return utils.setResponse(ctx, utils.createResponse(ctx, {
-        error: "Invalid order data",
-        details: errors
-      }));
-    }
-  );
+// Use in API handlers with utility functions
+app.post("/orders", (ctx): void => {
+  if (!ctx.validated.body.ok) {
+    handleError(ctx, 400, "Invalid order data", ctx.validated.body.error);
+    return;
+  }
+
+  const orderData = ctx.validated.body.value;
+  const result = processOrder(orderData);
+
+  if (!result.ok) {
+    const status = getStatusForError(result.error);
+    handleError(ctx, status, result.error.message, result.error.details);
+    return;
+  }
+
+  const order = result.value;
+  ctx.status = 201;
+  ctx.headers.set("Location", `/orders/${order.id}`);
+  ctx.response = createResponse(ctx, order, {
+    links: createLinks('orders', order.id)
+  });
 });
 ```
 
@@ -623,15 +650,15 @@ Deno.test("getUser - returns user when found", async () => {
       findOne: () => Promise.resolve(mockUser)
     }
   };
-  
+
   const ctx = createMockContext({
     params: { id: "123" },
     state: { db: mockDb }
   });
-  
+
   // Act
   await getUser(ctx);
-  
+
   // Assert
   assertEquals(ctx.status, 200);
   const body = await ctx.response?.json();
@@ -645,15 +672,15 @@ Deno.test("getUser - returns 404 when user not found", async () => {
       findOne: () => Promise.resolve(null)
     }
   };
-  
+
   const ctx = createMockContext({
     params: { id: "not-found" },
     state: { db: mockDb }
   });
-  
+
   // Act
   await getUser(ctx);
-  
+
   // Assert
   assertEquals(ctx.status, 404);
   const body = await ctx.response?.json();
@@ -677,10 +704,10 @@ const port = server.address?.port;
 Deno.test("GET /users/:id - returns user when found", async () => {
   // Seed test data
   await seedTestUser({ id: "test-user", name: "Test User" });
-  
+
   // Make request
   const res = await fetch(`http://localhost:${port}/users/test-user`);
-  
+
   // Assert
   assertEquals(res.status, 200);
   const data = await res.json();
@@ -690,7 +717,7 @@ Deno.test("GET /users/:id - returns user when found", async () => {
 
 Deno.test("GET /users/:id - returns 404 when user not found", async () => {
   const res = await fetch(`http://localhost:${port}/users/not-found`);
-  
+
   assertEquals(res.status, 404);
   const data = await res.json();
   assertEquals(data.error, "User not found");
@@ -752,7 +779,7 @@ setupRoutes(app);
 
 // Start server
 const controller = new AbortController();
-const server = app.listen({ 
+const server = app.listen({
   port: 3000,
   signal: controller.signal
 });
@@ -760,13 +787,13 @@ const server = app.listen({
 // Graceful shutdown
 const shutdown = async () => {
   console.log("Shutting down gracefully...");
-  
+
   // Close server
   controller.abort();
-  
+
   // Close database connections
   await closeDatabase();
-  
+
   // Other cleanup
   console.log("Cleanup complete");
   Deno.exit(0);
@@ -827,8 +854,54 @@ app.use(async (ctx, next) => {
   utils.setHeader(ctx, "X-XSS-Protection", "1; mode=block");
   utils.setHeader(ctx, "Referrer-Policy", "no-referrer-when-downgrade");
   utils.setHeader(ctx, "Content-Security-Policy", "default-src 'self'");
-  
+
   await next();
+});
+```
+
+## Utility Functions
+
+### Consistent Response Formatting
+
+Use the utility functions for consistent response formatting:
+
+```typescript
+// Create standardized HATEOAS links
+const links = createLinks('products', productId);
+// Result: { self: '/products/123', collection: '/products' }
+
+// Extend with custom links
+const customLinks = {
+  ...createLinks('products', productId),
+  reviews: `/products/${productId}/reviews`,
+  related: `/products/${productId}/related`
+};
+
+// Create response with links
+ctx.response = createResponse(ctx, product, { links: customLinks });
+
+// Create response with metadata
+ctx.response = createResponse(ctx, results, {
+  meta: {
+    total: 100,
+    page: 1,
+    limit: 10
+  }
+});
+```
+
+### Type-Safe Handlers
+
+Add explicit return type annotations to handlers for better type safety:
+
+```typescript
+app.post<Record<string, string>, Product>("/products", (ctx): void => {
+  if (!ctx.validated.body.ok) {
+    handleError(ctx, 400, "Invalid request data", ctx.validated.body.error);
+    return;
+  }
+
+  // Handler implementation...
 });
 ```
 
@@ -841,7 +914,8 @@ Remember:
 - Use strategic mutation for performance-critical paths
 - Keep domain logic pure and functional
 - Employ pattern matching for exhaustive type checking
-- Handle errors explicitly with Result types
+- Handle errors explicitly with Result types and the `handleError` utility
+- Use `createResponse` and `createLinks` for consistent API responses
 - Test thoroughly at all levels
 - Implement proper resource management
 - Use native Deno.serve options for server configuration

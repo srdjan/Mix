@@ -42,10 +42,10 @@ const orderWorkflow = app.workflow<OrderState, OrderEvent>();
 orderWorkflow.load({
   // Available states
   states: ["Draft", "Submitted", "Processing", "Shipped", "Delivered", "Cancelled"],
-  
+
   // Available events
   events: ["Submit", "Process", "Ship", "Deliver", "Cancel"],
-  
+
   // Valid transitions
   transitions: [
     { from: "Draft", to: "Submitted", on: "Submit" },
@@ -56,7 +56,7 @@ orderWorkflow.load({
     { from: "Submitted", to: "Cancelled", on: "Cancel" },
     { from: "Processing", to: "Cancelled", on: "Cancel" }
   ],
-  
+
   // Initial state
   initial: "Draft"
 });
@@ -70,18 +70,18 @@ Tasks represent actions that should be performed when transitions occur:
 orderWorkflow.load({
   // ... states, events as above
   transitions: [
-    { 
-      from: "Draft", 
-      to: "Submitted", 
+    {
+      from: "Draft",
+      to: "Submitted",
       on: "Submit",
       task: {
         assign: "sales@example.com",
         message: "New order submitted: {orderNumber}"
       }
     },
-    { 
-      from: "Submitted", 
-      to: "Processing", 
+    {
+      from: "Submitted",
+      to: "Processing",
       on: "Process",
       task: {
         assign: "warehouse@example.com",
@@ -134,7 +134,7 @@ The `createHandler` method creates specialized handlers for workflow-enabled end
 orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
   // The context is enhanced with workflow functionality
   const { instance } = ctx.workflow;
-  
+
   // Implementation details
   // ...
 });
@@ -145,52 +145,43 @@ orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
 The optimized workflow API provides utilities for transitions:
 
 ```typescript
-orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
-  return utils.handleResult(ctx.validated.body, ctx,
-    async (body, ctx) => {
-      const { event } = body;
-      const { instance } = ctx.workflow;
-      
-      // Check if transition is possible
-      if (!utils.canTransition(instance, event)) {
-        utils.setStatus(ctx, 400);
-        return utils.setResponse(ctx, utils.createResponse(ctx, {
-          error: "Invalid transition",
-          currentState: instance.currentState,
-          requestedEvent: event
-        }));
-      }
-      
-      // Apply transition
-      const success = utils.applyTransition(instance, event);
-      
-      if (!success) {
-        utils.setStatus(ctx, 500);
-        return utils.setResponse(ctx, utils.createResponse(ctx, {
-          error: "Failed to apply transition"
-        }));
-      }
-      
-      // Update business entity with new state
-      const order = await db.orders.findOne(ctx.validated.params.value.id);
-      order.state = instance.currentState;
-      await db.orders.update(order.id, order);
-      
-      // Return updated state
-      return utils.setResponse(ctx, utils.createResponse(ctx, {
-        order,
-        currentState: instance.currentState,
-        availableEvents: getAvailableEvents(instance)
-      }));
-    },
-    (errors, ctx) => {
-      utils.setStatus(ctx, 400);
-      return utils.setResponse(ctx, utils.createResponse(ctx, {
-        error: "Invalid transition data",
-        details: errors
-      }));
-    }
-  );
+orderWorkflow.createHandler("/orders/:id/transitions", (ctx) => {
+  if (!ctx.validated.body.ok) {
+    return utils.handleError(ctx, 400, "Invalid transition data", ctx.validated.body.error);
+  }
+
+  const body = ctx.validated.body.value;
+  const { event } = body;
+  const { instance } = ctx.workflow;
+
+  // Check if transition is possible
+  if (!utils.canTransition(instance, event)) {
+    return utils.handleError(ctx, 400, "Invalid transition", {
+      currentState: instance.currentState,
+      requestedEvent: event
+    });
+  }
+
+  // Apply transition
+  const success = utils.applyTransition(instance, event);
+
+  if (!success) {
+    return utils.handleError(ctx, 500, "Failed to apply transition");
+  }
+
+  // Update business entity with new state
+  const order = db.orders.findOne(ctx.validated.params.value.id);
+  order.state = instance.currentState;
+  db.orders.update(order.id, order);
+
+  // Return updated state
+  ctx.response = utils.createResponse(ctx, {
+    order,
+    currentState: instance.currentState,
+    availableEvents: getAvailableEvents(instance)
+  }, {
+    links: utils.createLinks('orders', order.id)
+  });
 });
 ```
 
@@ -199,36 +190,44 @@ orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
 Tasks attached to transitions can be processed after successful transitions:
 
 ```typescript
-orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
-  return utils.handleResult(ctx.validated.body, ctx,
-    async (body, ctx) => {
-      const { event } = body;
-      const { instance } = ctx.workflow;
-      
-      // Apply transition
-      const success = utils.applyTransition(instance, event);
-      
-      if (success) {
-        // Find the transition that was applied to get task info
-        const transition = utils.findTransition(instance, event);
-        
-        // Process task if present
-        if (transition?.task) {
-          // Example: Send notification
-          await sendNotification(
-            transition.task.assign,
-            transition.task.message.replace(
-              "{orderNumber}",
-              ctx.validated.params.value.id
-            )
-          );
-        }
-        
-        // Continue with response...
-      }
-    },
-    // Error handler...
-  );
+orderWorkflow.createHandler("/orders/:id/transitions", (ctx) => {
+  if (!ctx.validated.body.ok) {
+    return utils.handleError(ctx, 400, "Invalid transition data", ctx.validated.body.error);
+  }
+
+  const body = ctx.validated.body.value;
+  const { event } = body;
+  const { instance } = ctx.workflow;
+
+  // Apply transition
+  const success = utils.applyTransition(instance, event);
+
+  if (success) {
+    // Find the transition that was applied to get task info
+    const transition = utils.findTransition(instance, event);
+
+    // Process task if present
+    if (transition?.task) {
+      // Example: Send notification
+      sendNotification(
+        transition.task.assign,
+        transition.task.message.replace(
+          "{orderNumber}",
+          ctx.validated.params.value.id
+        )
+      );
+    }
+
+    // Return response with HATEOAS links
+    ctx.response = utils.createResponse(ctx, {
+      currentState: instance.currentState,
+      success: true
+    }, {
+      links: utils.createLinks('orders', ctx.validated.params.value.id)
+    });
+  } else {
+    utils.handleError(ctx, 400, "Failed to apply transition");
+  }
 });
 ```
 
@@ -241,7 +240,7 @@ Use pattern matching for exhaustive state handling:
 ```typescript
 import { match } from "./mod.ts";
 
-const getOrderActions = (instance: WorkflowInstance): string[] => 
+const getOrderActions = (instance: WorkflowInstance): string[] =>
   match(instance.currentState)
     .with("Draft", () => ["Submit", "Cancel"])
     .with("Submitted", () => ["Process", "Cancel"])
@@ -279,7 +278,7 @@ Implement business logic to control when transitions are allowed:
 ```typescript
 // Extend the basic transition check with business rules
 const canTransitionOrder = (
-  instance: WorkflowInstance, 
+  instance: WorkflowInstance,
   event: OrderEvent,
   order: Order
 ): boolean => {
@@ -287,18 +286,18 @@ const canTransitionOrder = (
   if (!utils.canTransition(instance, event)) {
     return false;
   }
-  
+
   // Then check business rules
   switch (event) {
     case "Submit":
       return order.items.length > 0 && order.totalAmount > 0;
-      
+
     case "Process":
       return order.paymentStatus === "Paid";
-      
+
     case "Ship":
       return order.items.every(item => item.inStock);
-      
+
     default:
       return true;
   }
@@ -347,14 +346,14 @@ For high-throughput scenarios, process transitions in batches:
 ```typescript
 // Batch transition processor
 const processOrderBatch = async (
-  orderIds: string[], 
+  orderIds: string[],
   event: OrderEvent
 ): Promise<Record<string, boolean>> => {
   const results: Record<string, boolean> = {};
-  
+
   // Process in parallel with concurrency limit
   const chunks = chunkArray(orderIds, 10);
-  
+
   for (const chunk of chunks) {
     await Promise.all(chunk.map(async (id) => {
       try {
@@ -363,7 +362,7 @@ const processOrderBatch = async (
           results[id] = false;
           return;
         }
-        
+
         // Create workflow instance
         const instance: WorkflowInstance = {
           definition: orderWorkflow.toJSON(),
@@ -371,27 +370,27 @@ const processOrderBatch = async (
           history: order.stateHistory || [],
           tasks: []
         };
-        
+
         // Apply transition
         if (utils.canTransition(instance, event)) {
           const success = utils.applyTransition(instance, event);
-          
+
           if (success) {
             // Update order
             order.state = instance.currentState;
             order.stateHistory = instance.history;
             await db.orders.update(id, order);
-            
+
             // Process tasks
             for (const task of instance.tasks) {
               await processTask(task, order);
             }
-            
+
             results[id] = true;
             return;
           }
         }
-        
+
         results[id] = false;
       } catch (err) {
         console.error(`Error processing order ${id}:`, err);
@@ -399,7 +398,7 @@ const processOrderBatch = async (
       }
     }));
   }
-  
+
   return results;
 };
 ```
@@ -428,11 +427,11 @@ const applyTransitionSafe = (
       }
     };
   }
-  
+
   try {
     // Apply transition
     const success = utils.applyTransition(instance, event);
-    
+
     if (!success) {
       return {
         ok: false,
@@ -444,7 +443,7 @@ const applyTransitionSafe = (
         }
       };
     }
-    
+
     return { ok: true, value: instance };
   } catch (err) {
     return {
@@ -474,14 +473,14 @@ const processTaskSafe = async (
   try {
     // Replace placeholders in message
     let message = task.message;
-    
+
     for (const [key, value] of Object.entries(context)) {
       message = message.replace(`{${key}}`, String(value));
     }
-    
+
     // Process based on task type
     await sendNotification(task.assign, message);
-    
+
     return { ok: true, value: undefined };
   } catch (err) {
     return {
@@ -563,19 +562,19 @@ const updateOrderState = async (
 ) => {
   // Get current order
   const order = await db.orders.findOne(orderId);
-  
+
   if (!order) {
     throw new Error(`Order not found: ${orderId}`);
   }
-  
+
   // Update order state from workflow
   order.state = instance.currentState as OrderState;
   order.stateHistory = instance.history;
   order.updatedAt = new Date();
-  
+
   // Save updated order
   await db.orders.update(orderId, order);
-  
+
   return order;
 };
 ```
@@ -624,36 +623,36 @@ orderWorkflow.load({
   states: ["Draft", "Submitted", "Processing", "Shipped", "Delivered", "Cancelled"],
   events: ["Submit", "Process", "Ship", "Deliver", "Cancel"],
   transitions: [
-    { 
-      from: "Draft", 
-      to: "Submitted", 
+    {
+      from: "Draft",
+      to: "Submitted",
       on: "Submit",
       task: {
         assign: "sales@example.com",
         message: "Order {id} submitted by {customer}"
       }
     },
-    { 
-      from: "Submitted", 
-      to: "Processing", 
+    {
+      from: "Submitted",
+      to: "Processing",
       on: "Process",
       task: {
         assign: "warehouse@example.com",
         message: "Order {id} ready for processing"
       }
     },
-    { 
-      from: "Processing", 
-      to: "Shipped", 
+    {
+      from: "Processing",
+      to: "Shipped",
       on: "Ship",
       task: {
         assign: "logistics@example.com",
         message: "Order {id} ready for shipping"
       }
     },
-    { 
-      from: "Shipped", 
-      to: "Delivered", 
+    {
+      from: "Shipped",
+      to: "Delivered",
       on: "Deliver",
       task: {
         assign: "customer-service@example.com",
@@ -691,16 +690,16 @@ db.orders.set("order-1", {
 const processTask = async (task: any, order: Order) => {
   // Replace placeholders in message
   let message = task.message;
-  
+
   for (const [key, value] of Object.entries(order)) {
     message = message.replace(`{${key}}`, String(value));
   }
-  
+
   console.log(`[Task] To: ${task.assign}, Message: ${message}`);
 };
 
 // Get available actions for state
-const getAvailableActions = (state: OrderState): OrderEvent[] => 
+const getAvailableActions = (state: OrderState): OrderEvent[] =>
   match(state)
     .with("Draft", () => ["Submit", "Cancel"] as const)
     .with("Submitted", () => ["Process", "Cancel"] as const)
@@ -716,25 +715,25 @@ orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
     async (params, ctx) => {
       // Get order
       const order = db.orders.get(params.id);
-      
+
       if (!order) {
         utils.setStatus(ctx, 404);
         return utils.setResponse(ctx, utils.createResponse(ctx, {
           error: "Order not found"
         }));
       }
-      
+
       return utils.handleResult(
         utils.validate(transitionSchema, ctx.validated.body.value),
         ctx,
         async (body, ctx) => {
           const { event } = body;
           const { instance } = ctx.workflow;
-          
+
           // Update instance state to match order
           instance.currentState = order.state;
           instance.history = order.stateHistory;
-          
+
           // Check if transition is possible
           if (!utils.canTransition(instance, event)) {
             utils.setStatus(ctx, 400);
@@ -745,30 +744,30 @@ orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
               allowedEvents: getAvailableActions(order.state)
             }));
           }
-          
+
           // Apply transition
           const success = utils.applyTransition(instance, event);
-          
+
           if (!success) {
             utils.setStatus(ctx, 500);
             return utils.setResponse(ctx, utils.createResponse(ctx, {
               error: "Failed to apply transition"
             }));
           }
-          
+
           // Find transition for task
           const transition = utils.findTransition(instance, event);
-          
+
           // Update order
           order.state = instance.currentState;
           order.stateHistory = instance.history;
           order.updatedAt = new Date();
-          
+
           // Process task if present
           if (transition?.task) {
             await processTask(transition.task, order);
           }
-          
+
           return utils.setResponse(ctx, utils.createResponse(ctx, {
             order,
             currentState: order.state,
@@ -800,14 +799,14 @@ app.get<{ id: string }>("/orders/:id", async (ctx) => {
   return utils.handleResult(ctx.validated.params, ctx,
     async (params, ctx) => {
       const order = db.orders.get(params.id);
-      
+
       if (!order) {
         utils.setStatus(ctx, 404);
         return utils.setResponse(ctx, utils.createResponse(ctx, {
           error: "Order not found"
         }));
       }
-      
+
       return utils.setResponse(ctx, utils.createResponse(ctx, {
         order,
         allowedEvents: getAvailableActions(order.state)

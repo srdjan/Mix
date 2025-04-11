@@ -1,6 +1,5 @@
-import { App, Context } from "../../lib/mix.ts";
+import { App } from "../../lib/mix.ts";
 
-// Types & Validation
 type ProductCategory = 'electronics' | 'books' | 'clothing';
 
 type Product = {
@@ -24,33 +23,12 @@ products.set("ABC-1234", {
   metadata: { tags: ["tech", "accessories"], sku: "ABC-1234" }
 });
 
-// Initialize App
 const app = App();
-
-const handleError = (ctx: Context, status: number, message: string, details?: unknown) => {
-  ctx.status = status;
-  ctx.response = new Response(JSON.stringify({ error: message, details }), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
-};
-
-const createResponse = (ctx: Context, data: unknown, options?: { links?: Record<string, unknown>; meta?: Record<string, unknown> }) => {
-  const responseBody = {
-    data,
-    ...(options?.links ? { _links: options.links } : {}),
-    ...(options?.meta ? { _meta: options.meta } : {})
-  };
-
-  return new Response(JSON.stringify(responseBody), {
-    status: ctx.status || 200,
-    headers: { "Content-Type": "application/json" }
-  });
-};
+const { utils } = app;
+const { handleError, createResponse } = utils;
 
 // Middleware
 app.use(async (ctx, next) => {
-  // Request logging
   console.log(`[${new Date().toISOString()}] ${ctx.request.method} ${new URL(ctx.request.url).pathname}`);
 
   // Performance tracking
@@ -60,7 +38,8 @@ app.use(async (ctx, next) => {
     // API key validation
     const apiKey = ctx.request.headers.get("X-API-Key");
     if (apiKey !== Deno.env.get("API_KEY")) {
-      return handleError(ctx, 401, "Invalid API key");
+      handleError(ctx, 401, "Invalid API key");
+      return;
     }
 
     await next();
@@ -79,9 +58,10 @@ app.use(async (ctx, next) => {
 });
 
 // GET /products - List products with pagination
-app.get("/products", (ctx) => {
+app.get("/products", (ctx): void => {
   if (!ctx.validated.query.ok) {
-    return handleError(ctx, 400, "Invalid query parameters", ctx.validated.query.error);
+    handleError(ctx, 400, "Invalid query parameters", ctx.validated.query.error);
+    return;
   }
 
   const query = ctx.validated.query.value;
@@ -102,12 +82,14 @@ app.get("/products", (ctx) => {
       limit
     }
   });
+  return;
 });
 
 // POST /products - Create a new product
-app.post<Record<string, string>, Product>("/products", (ctx) => {
+app.post<Record<string, string>, Product>("/products", (ctx): void => {
   if (!ctx.validated.body.ok) {
-    return handleError(ctx, 400, "Invalid request data", ctx.validated.body.error);
+    handleError(ctx, 400, "Invalid request data", ctx.validated.body.error);
+    return;
   }
 
   const product = ctx.validated.body.value as Product;
@@ -115,7 +97,8 @@ app.post<Record<string, string>, Product>("/products", (ctx) => {
 
   // Check if product already exists
   if (products.has(sku)) {
-    return handleError(ctx, 409, "Product SKU already exists");
+    handleError(ctx, 409, "Product SKU already exists");
+    return;
   }
 
   // Store product
@@ -128,16 +111,20 @@ app.post<Record<string, string>, Product>("/products", (ctx) => {
 });
 
 // GET /products/:sku - Get a specific product
-app.get<{ sku: string }>("/products/:sku", (ctx) => {
+app.get<{ sku: string }>("/products/:sku", (ctx): void => {
   if (!ctx.validated.params.ok) {
-    return handleError(ctx, 400, "Invalid SKU format", ctx.validated.params.error);
+    handleError(ctx, 400, "Invalid SKU format", ctx.validated.params.error);
+    return;
   }
 
-  const sku = ctx.validated.params.value.sku;
+  // TypeScript doesn't understand that we've already checked ctx.validated.params.ok
+  const params = ctx.validated.params as { ok: true; value: { sku: string } };
+  const sku = params.value.sku;
   const product = products.get(sku);
 
   if (!product) {
-    return handleError(ctx, 404, "Product not found");
+    handleError(ctx, 404, "Product not found");
+    return;
   }
 
   ctx.response = createResponse(ctx, product, {
@@ -150,7 +137,7 @@ app.get<{ sku: string }>("/products/:sku", (ctx) => {
 });
 
 // PUT /products/:sku - Update a product
-app.put<{ sku: string }, Product>("/products/:sku", (ctx) => {
+app.put<{ sku: string }, Product>("/products/:sku", (ctx): void => {
   // Validate request parameters
   const errors = [];
 
@@ -158,7 +145,8 @@ app.put<{ sku: string }, Product>("/products/:sku", (ctx) => {
   if (!ctx.validated.body.ok) errors.push("Invalid product data");
 
   if (errors.length > 0) {
-    return handleError(ctx, 400, "Invalid request data", errors);
+    handleError(ctx, 400, "Invalid request data", errors);
+    return;
   }
 
   // We know these are valid at this point because we checked ctx.validated.params.ok
@@ -171,7 +159,8 @@ app.put<{ sku: string }, Product>("/products/:sku", (ctx) => {
 
   // Check if product exists
   if (!products.has(sku)) {
-    return handleError(ctx, 404, "Product not found");
+    handleError(ctx, 404, "Product not found");
+    return;
   }
 
   // Update product
@@ -183,15 +172,17 @@ app.put<{ sku: string }, Product>("/products/:sku", (ctx) => {
 });
 
 // DELETE /products/:sku - Delete a product
-app.delete<{ sku: string }>("/products/:sku", (ctx) => {
+app.delete<{ sku: string }>("/products/:sku", (ctx): void => {
   if (!ctx.validated.params.ok) {
-    return handleError(ctx, 400, "Invalid SKU format", ctx.validated.params.error);
+    handleError(ctx, 400, "Invalid SKU format", ctx.validated.params.error);
+    return;
   }
 
   const sku = ctx.validated.params.value.sku;
 
   if (!products.has(sku)) {
-    return handleError(ctx, 404, "Product not found");
+    handleError(ctx, 404, "Product not found");
+    return;
   }
 
   // Delete product
@@ -202,6 +193,7 @@ app.delete<{ sku: string }>("/products/:sku", (ctx) => {
   ctx.response = new Response(null, { status: 204 });
 });
 
+// In a real application, we would start the server with:
 const port = 3000;
 app.listen(port);
 console.log(`Product API running at http://localhost:${port}`);

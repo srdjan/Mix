@@ -16,8 +16,8 @@ Mix is a minimalist, performance-optimized TypeScript framework for building API
 
 ```typescript
 // Result type for explicit error handling
-type Result<T, E = Error> = 
-  | { ok: true; value: T } 
+type Result<T, E = Error> =
+  | { ok: true; value: T }
   | { ok: false; error: E };
 
 // Validation result specialization
@@ -55,7 +55,7 @@ const app = App();
 const { utils } = app;
 
 // Start server
-app.listen({ 
+app.listen({
   port: 3000,
   hostname: "0.0.0.0",
   signal: controller.signal,
@@ -78,7 +78,7 @@ app.get("/", (ctx) => {
 
 // Path parameters (type-safe)
 app.get<{ id: string }>("/users/:id", (ctx) => {
-  // Type-safe access to ctx.validated.params.value.id  
+  // Type-safe access to ctx.validated.params.value.id
 });
 
 // Generic parametric routes
@@ -105,12 +105,12 @@ app.use(async (ctx, next) => {
 // Authentication middleware
 const authenticate = async (ctx: Context, next: Next) => {
   const token = ctx.request.headers.get("Authorization")?.split(" ")[1];
-  
+
   if (!token) {
     utils.setStatus(ctx, 401);
     return utils.setResponse(ctx, utils.createResponse(ctx, { error: "Unauthorized" }));
   }
-  
+
   ctx.state.user = await validateToken(token);
   await next();
 };
@@ -147,9 +147,9 @@ utils.setResponse(ctx, utils.createResponse(ctx, data));
 
 ```typescript
 // Simple response
-const response = utils.createResponse(ctx, { 
-  success: true, 
-  data: items 
+const response = utils.createResponse(ctx, {
+  success: true,
+  data: items
 });
 
 // With HATEOAS links
@@ -167,6 +167,17 @@ const response = utils.createResponse(ctx, data, {
     items: relatedItems
   }
 });
+```
+
+### Error and Response Utilities
+
+```typescript
+// Handle errors with consistent formatting
+utils.handleError(ctx, 400, "Invalid request data", validationErrors);
+
+// Create standardized links for resources
+const links = utils.createLinks('resources', resourceId);
+// Result: { self: '/resources/123', collection: '/resources' }
 ```
 
 ## Validation
@@ -213,9 +224,9 @@ return utils.handleResult(validation, ctx,
   (errors, ctx) => {
     // Error path with validation errors
     utils.setStatus(ctx, 400);
-    return utils.setResponse(ctx, utils.createResponse(ctx, { 
-      error: "Invalid data", 
-      details: errors 
+    return utils.setResponse(ctx, utils.createResponse(ctx, {
+      error: "Invalid data",
+      details: errors
     }));
   }
 );
@@ -308,15 +319,15 @@ utils.assignTask(instance, task);
 orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
   // Implementation details...
   const workflowInstance = ctx.workflow.instance;
-  
+
   // Apply transition
   const success = utils.applyTransition(workflowInstance, event);
-  
+
   if (success) {
     // Update related business objects
     order.status = workflowInstance.currentState;
     await saveOrder(order);
-    
+
     return utils.setResponse(ctx, utils.createResponse(ctx, {
       status: order.status,
       order: order
@@ -336,7 +347,7 @@ Mix provides tools for monitoring and optimizing performance.
 const memoryUsage = Deno.memoryUsage();
 console.log({
   rss: formatBytes(memoryUsage.rss),
-  heapTotal: formatBytes(memoryUsage.heapTotal), 
+  heapTotal: formatBytes(memoryUsage.heapTotal),
   heapUsed: formatBytes(memoryUsage.heapUsed)
 });
 
@@ -375,7 +386,7 @@ app.use(async (ctx, next) => {
     await next();
   } catch (err) {
     console.error("Unhandled error:", err);
-    
+
     utils.setStatus(ctx, 500);
     utils.setResponse(ctx, utils.createResponse(ctx, {
       error: "Internal server error",
@@ -389,7 +400,7 @@ const processOrder = (order: Order): Result<ProcessedOrder, OrderError> => {
   if (!order.items.length) {
     return { ok: false, error: { code: "EMPTY_ORDER", message: "Order has no items" } };
   }
-  
+
   // Process order...
   return { ok: true, value: processedOrder };
 };
@@ -397,11 +408,11 @@ const processOrder = (order: Order): Result<ProcessedOrder, OrderError> => {
 // Using domain results
 app.post("/orders", async (ctx) => {
   const orderResult = utils.validate(orderSchema, ctx.validated.body.value);
-  
+
   return utils.handleResult(orderResult, ctx,
     async (order, ctx) => {
       const processResult = await processOrder(order);
-      
+
       return utils.handleResult(processResult, ctx,
         (processed, ctx) => {
           utils.setStatus(ctx, 201);
@@ -415,9 +426,9 @@ app.post("/orders", async (ctx) => {
     },
     (errors, ctx) => {
       utils.setStatus(ctx, 400);
-      return utils.setResponse(ctx, utils.createResponse(ctx, { 
-        error: "Invalid order data", 
-        details: errors 
+      return utils.setResponse(ctx, utils.createResponse(ctx, {
+        error: "Invalid order data",
+        details: errors
       }));
     }
   );
@@ -440,24 +451,24 @@ app.get("/stream", (ctx) => {
           controller.close();
           return;
         }
-        
+
         controller.enqueue(`data: ${JSON.stringify({ count })}\n\n`);
         count++;
       }, 1000);
     }
   });
-  
+
   utils.setHeader(ctx, "Content-Type", "text/event-stream");
   utils.setHeader(ctx, "Cache-Control", "no-cache");
   utils.setHeader(ctx, "Connection", "keep-alive");
-  
+
   return utils.setResponse(ctx, new Response(stream));
 });
 
 // Binary data response
 app.get("/binary", (ctx) => {
   const buffer = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-  
+
   utils.setHeader(ctx, "Content-Type", "application/octet-stream");
   return utils.setResponse(ctx, new Response(buffer));
 });
@@ -525,132 +536,46 @@ const executeEffect = (effect: EmailEffect): void => {
 orderWorkflow.createHandler("/orders/:id/confirm", async (ctx) => {
   // Apply transition
   const success = utils.applyTransition(ctx.workflow.instance, "Confirm");
-  
+
   if (success) {
     // Create pure effect description
     const effect = createEmailEffect(
       order.customer,
       `Your order #${order.id} has been confirmed`
     );
-    
+
     // Execute effect at boundary
     executeEffect(effect);
-    
-    return utils.setResponse(ctx, utils.createResponse(ctx, { 
-      status: "confirmed" 
+
+    return utils.setResponse(ctx, utils.createResponse(ctx, {
+      status: "confirmed"
     }));
   }
 });
 ```
 
-## Type Definitions
+## Utilities Reference
 
 ```typescript
-// Application types
-type App = {
-  use: (middleware: Middleware) => void;
-  get: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
-  post: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
-  put: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
-  delete: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
-  patch: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
-  options: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
-  head: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
-  listen: (options: Deno.ServeOptions) => Deno.Server;
-  close: () => void;
-  workflow: <S extends string, E extends string>() => Workflow<S, E>;
-  utils: Utils;
-};
+// Context utilities
+utils.setStatus(ctx, statusCode); // Set response status code
+utils.setHeader(ctx, key, value); // Set response header
+utils.setResponse(ctx, response); // Set response object
+utils.createResponse(ctx, data, options); // Create response from data
+utils.handleError(ctx, status, message, details); // Handle errors with consistent formatting
+utils.createLinks(resourcePath, id); // Create standardized HATEOAS links
 
-// Context type
-type Context<P = {}, B = unknown> = {
-  request: Request;
-  url: URL;
-  params: Record<string, string>;
-  validated: {
-    params: Result<P, ValidationError>;
-    body: Result<B, ValidationError>;
-  };
-  state: Record<string, unknown>;
-  response?: Response;
-};
+// Validation utilities
+utils.validate(schema, input); // Validate input against schema
+utils.handleResult(result, ctx, successHandler, errorHandler); // Handle Result type
 
-// Middleware and handler types
-type Next = () => Promise<void>;
-type Middleware = (ctx: Context, next: Next) => Promise<void> | void;
-type Handler<P = {}, B = unknown> = (ctx: Context<P, B>) => Promise<void | Response> | void | Response;
+// Pattern matching
+utils.match(value); // Create pattern matcher
 
-// Result type
-type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
-
-// Workflow types
-type Workflow<S extends string, E extends string> = {
-  load: (config: WorkflowConfig<S, E>) => void;
-  createHandler: (path: string, handler: WorkflowHandler<S, E>) => void;
-  toJSON: () => WorkflowConfig<S, E>;
-};
-
-type WorkflowConfig<S extends string, E extends string> = {
-  states: S[];
-  events: E[];
-  transitions: Transition<S, E>[];
-  initial: S;
-};
-
-type Transition<S extends string, E extends string> = {
-  from: S;
-  to: S;
-  on: E;
-  guard?: (instance: WorkflowInstance<S, E>) => boolean;
-  task?: WorkflowTask;
-};
-
-type WorkflowInstance<S extends string, E extends string> = {
-  id: string;
-  currentState: S;
-  history: WorkflowHistoryEntry<S, E>[];
-  tasks: WorkflowTask[];
-  data: Record<string, unknown>;
-};
-
-type WorkflowHistoryEntry<S extends string, E extends string> = {
-  from: S;
-  to: S;
-  event: E;
-  timestamp: number;
-};
-
-type WorkflowTask = {
-  id: string;
-  assign: string;
-  message: string;
-  dueDate?: Date;
-  completed?: boolean;
-  completedAt?: number;
-  completedBy?: string;
-};
-
-type WorkflowHandler<S extends string, E extends string> = (ctx: WorkflowContext<S, E>) => Promise<void | Response> | void | Response;
-
-type WorkflowContext<S extends string, E extends string> = Context & {
-  workflow: {
-    instance: WorkflowInstance<S, E>;
-    event: E;
-  };
-};
-
-// Utility types
-type Utils = {
-  setStatus: (ctx: Context, status: number) => Context;
-  setHeader: (ctx: Context, key: string, value: string) => Context;
-  setResponse: (ctx: Context, response: Response) => Context;
-  createResponse: <T>(ctx: Context, data: T, options?: ResponseOptions) => Response;
-  validate: <T>(schema: Schema<T>, data: unknown) => Result<T, ValidationError>;
-  handleResult: <T, E>(result: Result<T, E>, ctx: Context, onSuccess: (value: T, ctx: Context) => Response | void, onError: (error: E, ctx: Context) => Response | void) => Response | void;
-  match: <T>(value: T) => Matcher<T>;
-  canTransition: <S extends string, E extends string>(instance: WorkflowInstance<S, E>, event: E) => boolean;
-  applyTransition: <S extends string, E extends string>(instance: WorkflowInstance<S, E>, event: E) => boolean;
-  findTransition: <S extends string, E extends string>(instance: WorkflowInstance<S, E>, event: E) => Transition<S, E> | undefined;
-  getPendingTasks: <S extends string, E extends string>(instance: WorkflowInstance<S, E>) => WorkflowTask[];
-  assignTask: <S extends string, E extends string>(instance: WorkflowInstance<S, E>, task: WorkflowTask) => void;
-};
+// Workflow utilities
+utils.canTransition(instance, event); // Check if transition is possible
+utils.applyTransition(instance, event); // Apply transition
+utils.findTransition(instance, event); // Find transition definition
+utils.getPendingTasks(instance); // Get pending tasks
+utils.assignTask(instance, task); // Assign task
+```
