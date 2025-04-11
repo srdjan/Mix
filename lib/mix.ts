@@ -14,11 +14,11 @@ type MatchResult<T, R> = {
 const match = <T, R>(value: T): MatchResult<T, R> => {
   let matched = false;
   let result: R | undefined;
-  
+
   const matchResult: MatchResult<T, R> = {
     with<P>(pattern: P, handler: (value: T) => R): MatchResult<T, R> {
       if (matched) return matchResult;
-      
+
       if (typeof pattern === 'object' && pattern !== null) {
         const isMatch = Object.entries(pattern as Record<string, unknown>).every(([key, pValue]) => {
           const typedValue = value as Record<string, unknown>;
@@ -27,7 +27,7 @@ const match = <T, R>(value: T): MatchResult<T, R> => {
           }
           return typedValue[key] === pValue;
         });
-        
+
         if (isMatch) {
           matched = true;
           result = handler(value);
@@ -36,25 +36,25 @@ const match = <T, R>(value: T): MatchResult<T, R> => {
         matched = true;
         result = handler(value);
       }
-      
+
       return matchResult;
     },
-    
+
     when(predicate: (value: T) => boolean, handler: () => R): MatchResult<T, R> {
       if (matched) return matchResult;
-      
+
       if (predicate(value)) {
         matched = true;
         result = handler();
       }
-      
+
       return matchResult;
     },
-    
+
     otherwise(fallback: () => R): R {
       return matched ? result! : fallback();
     },
-    
+
     exhaustive(): R {
       if (!matched) {
         throw new Error(`Non-exhaustive pattern matching for: ${JSON.stringify(value)}`);
@@ -62,7 +62,7 @@ const match = <T, R>(value: T): MatchResult<T, R> => {
       return result!;
     }
   };
-  
+
   return matchResult;
 };
 
@@ -87,7 +87,7 @@ export type ValidationResult<T> = Result<T, string[]>;
 // Enhanced validation with pattern matching
 const validate = <T>(schema: ReturnType<typeof type>, input: unknown): ValidationResult<T> => {
   const result = schema(input);
-  
+
   if (!result.problems) {
     return { ok: true, value: result.data as T };
   } else {
@@ -147,20 +147,20 @@ const validateWorkflowDefinition = (json: unknown): ValidationResult<WorkflowDef
   if (typeof json !== 'object' || json === null) {
     return { ok: false, error: ['Workflow definition must be an object'] };
   }
-  
+
   const definition = json as Record<string, unknown>;
   const errors: string[] = [];
-  
+
   // Validate states
   if (!Array.isArray(definition.states)) {
     errors.push('states must be an array');
   }
-  
+
   // Validate events
   if (!Array.isArray(definition.events)) {
     errors.push('events must be an array');
   }
-  
+
   // Validate transitions
   if (!Array.isArray(definition.transitions)) {
     errors.push('transitions must be an array');
@@ -171,12 +171,12 @@ const validateWorkflowDefinition = (json: unknown): ValidationResult<WorkflowDef
         errors.push(`transitions[${i}] must be an object`);
         continue;
       }
-      
+
       const transition = t as Record<string, unknown>;
       if (typeof transition.from === 'undefined') errors.push(`transitions[${i}].from is required`);
       if (typeof transition.to === 'undefined') errors.push(`transitions[${i}].to is required`);
       if (typeof transition.on === 'undefined') errors.push(`transitions[${i}].on is required`);
-      
+
       if (typeof transition.task !== 'object' || transition.task === null) {
         errors.push(`transitions[${i}].task must be an object`);
       } else {
@@ -186,11 +186,11 @@ const validateWorkflowDefinition = (json: unknown): ValidationResult<WorkflowDef
       }
     }
   }
-  
+
   if (errors.length > 0) {
     return { ok: false, error: errors };
   }
-  
+
   return { ok: true, value: definition as unknown as WorkflowDefinition };
 };
 
@@ -214,22 +214,25 @@ const safeParseBody = async (request: Request): Promise<Result<unknown, Error>> 
   try {
     const contentType = request.headers.get("content-type");
 
-    if (contentType?.includes("application/json")) {
-      try {
-        const body = await request.json();
-        return { ok: true, value: body };
-      } catch (error) {
-        return {
+    return match<{ isJson: boolean }, Promise<Result<unknown, Error>>>({ isJson: contentType?.includes("application/json") || false })
+      .with({ isJson: true }, async () => {
+        try {
+          const body = await request.json();
+          return { ok: true, value: body };
+        } catch (error) {
+          return {
+            ok: false,
+            error: error instanceof Error ? error : new Error(String(error))
+          };
+        }
+      })
+      .with({ isJson: false }, () => {
+        return Promise.resolve({
           ok: false,
-          error: error instanceof Error ? error : new Error(String(error))
-        };
-      }
-    } else {
-      return {
-        ok: false,
-        error: new Error("Unsupported content type")
-      };
-    }
+          error: new Error("Unsupported content type")
+        });
+      })
+      .exhaustive();
   } catch (error) {
     return {
       ok: false,
@@ -283,36 +286,89 @@ export const handleResult = <T, E, R>(
   .with({ ok: false }, (r) => handlers.failure((r as { ok: false; error: E }).error, ctx))
   .exhaustive();
 
-// New utility functions
+// Utility functions with pattern matching
 export const handleError = (ctx: Context, status: number, message: string, details?: unknown): Context => {
   ctx.status = status;
-  ctx.response = new Response(JSON.stringify({ error: message, details }), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
+
+  // Use pattern matching for different error scenarios
+  ctx.response = match<{ status: number; hasDetails: boolean }, Response>({ status, hasDetails: details !== undefined })
+    .with({ hasDetails: true }, () => {
+      return new Response(JSON.stringify({ error: message, details }), {
+        status,
+        headers: { "Content-Type": "application/json" }
+      });
+    })
+    .with({ hasDetails: false }, () => {
+      return new Response(JSON.stringify({ error: message }), {
+        status,
+        headers: { "Content-Type": "application/json" }
+      });
+    })
+    .exhaustive();
+
   return ctx;
 };
 
-export const createResponse = (ctx: Context, data: unknown, options?: { 
-  links?: Record<string, unknown>; 
-  meta?: Record<string, unknown> 
+export const createResponse = (ctx: Context, data: unknown, options?: {
+  links?: Record<string, unknown>;
+  meta?: Record<string, unknown>
 }): Response => {
-  const responseBody = {
-    data,
-    ...(options?.links ? { _links: options.links } : {}),
-    ...(options?.meta ? { _meta: options.meta } : {})
-  };
-
-  return new Response(JSON.stringify(responseBody), {
-    status: ctx.status || 200,
-    headers: { "Content-Type": "application/json" }
-  });
+  // Use pattern matching for different response scenarios
+  return match<{ hasOptions: boolean; hasLinks: boolean; hasMeta: boolean }, Response>({
+    hasOptions: !!options,
+    hasLinks: !!options?.links,
+    hasMeta: !!options?.meta
+  })
+    .with({ hasOptions: false }, () => {
+      return new Response(JSON.stringify({ data }), {
+        status: ctx.status || 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    })
+    .with({ hasLinks: true, hasMeta: true }, () => {
+      return new Response(JSON.stringify({
+        data,
+        _links: options!.links,
+        _meta: options!.meta
+      }), {
+        status: ctx.status || 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    })
+    .with({ hasLinks: true, hasMeta: false }, () => {
+      return new Response(JSON.stringify({
+        data,
+        _links: options!.links
+      }), {
+        status: ctx.status || 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    })
+    .with({ hasLinks: false, hasMeta: true }, () => {
+      return new Response(JSON.stringify({
+        data,
+        _meta: options!.meta
+      }), {
+        status: ctx.status || 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    })
+    .exhaustive();
 };
 
-export const createLinks = (resourcePath: string, id: string): Record<string, string> => ({
-  self: `/${resourcePath}/${id}`,
-  collection: `/${resourcePath}`
-});
+export const createLinks = (resourcePath: string, id: string): Record<string, string> => {
+  // Use pattern matching to handle different resource path formats
+  return match<{ hasLeadingSlash: boolean }, Record<string, string>>({ hasLeadingSlash: resourcePath.startsWith('/') })
+    .with({ hasLeadingSlash: true }, () => ({
+      self: `${resourcePath}/${id}`,
+      collection: resourcePath
+    }))
+    .with({ hasLeadingSlash: false }, () => ({
+      self: `/${resourcePath}/${id}`,
+      collection: `/${resourcePath}`
+    }))
+    .exhaustive();
+};
 
 // ======== ROUTER ========
 export const createRouter = () => {
@@ -367,7 +423,7 @@ export const assignTask = (instance: WorkflowInstance, task: WorkflowTransition[
 };
 
 export const applyTransition = (instance: WorkflowInstance, event: WorkflowEvent): boolean => {
-  const transition = instance.definition.transitions.find(t => 
+  const transition = instance.definition.transitions.find(t =>
     t.from === instance.currentState && t.on === event);
 
   return match<WorkflowTransition | undefined, boolean>(transition)
@@ -378,10 +434,10 @@ export const applyTransition = (instance: WorkflowInstance, event: WorkflowEvent
         to: t!.to,
         at: new Date()
       });
-      
+
       instance.currentState = t!.to;
       if (t!.task) instance.tasks.push(t!.task);
-      
+
       return true;
     })
     .exhaustive();
@@ -404,12 +460,13 @@ export const App = () => {
     const url = new URL(request.url);
     const queryParams = Object.fromEntries(url.searchParams);
     const headerParams = Object.fromEntries(request.headers);
-    
-    const bodyResult = await match(request.method)
-      .with(['GET', 'HEAD'], () => Promise.resolve<ValidationResult<unknown>>({ ok: true, value: null }))
+
+    const bodyResult = await match<string, Promise<ValidationResult<unknown>>>(request.method)
+      .with('GET', () => Promise.resolve<ValidationResult<unknown>>({ ok: true, value: null }))
+      .with('HEAD', () => Promise.resolve<ValidationResult<unknown>>({ ok: true, value: null }))
       .otherwise(async () => {
         const parsed = await safeParseBody(request);
-        return match(parsed)
+        return match<Result<unknown, Error>, ValidationResult<unknown>>(parsed)
           .with({ ok: true }, p => ({ ok: true, value: (p as { ok: true; value: unknown }).value }))
           .with({ ok: false }, (p) => ({ ok: false, error: [(p as { ok: false; error: Error }).error.message] }))
           .exhaustive();
@@ -421,7 +478,7 @@ export const App = () => {
       headers: new Headers({ 'Content-Type': 'application/json' }),
       state: {},
       validated: {
-        body: bodyResult,
+        body: bodyResult as ValidationResult<unknown>,
         params: { ok: true, value: {} },
         query: { ok: true, value: queryParams as Record<string, string> },
         headers: { ok: true, value: headerParams as Record<string, string> }
@@ -442,10 +499,10 @@ export const App = () => {
 
       // Route matching
       const routeMatch = router.match(request);
-      
-      return match<{ handler: Middleware; params: Record<string, string> } | null, Response>(routeMatch)
-        .with(null, () => new Response("Not Found", { status: 404 }))
-        .with({}, (rm) => {
+
+      return match<{ handler: Middleware; params: Record<string, string> } | null, Promise<Response>>(routeMatch)
+        .with(null, () => Promise.resolve(new Response("Not Found", { status: 404 })))
+        .with({}, async (rm) => {
           ctx.validated.params = { ok: true, value: rm!.params as Record<string, string> };
           await rm!.handler(ctx, () => Promise.resolve());
           return ctx.response || new Response(null, { status: 204 });
@@ -472,11 +529,11 @@ export const App = () => {
     const defineTransition = (config: WorkflowTransition) => {
       // Validate transition
       match(config)
-        .when(c => typeof c.from === 'undefined' || 
-                  typeof c.to === 'undefined' || 
-                  typeof c.on !== 'string' || 
-                  typeof c.task !== 'object', 
-              () => { throw new Error('Invalid transition definition'); })
+        .when(c => typeof c.from === 'undefined' ||
+          typeof c.to === 'undefined' ||
+          typeof c.on !== 'string' ||
+          typeof c.task !== 'object',
+          () => { throw new Error('Invalid transition definition'); })
         .otherwise(() => {
           // Update definition
           definition.transitions.push(config);
@@ -497,10 +554,10 @@ export const App = () => {
 
     const load = (json: unknown) => {
       const validation = validateWorkflowDefinition(json);
-      
+
       return match(validation)
-        .with({ ok: false }, v => { 
-          throw new Error(`Invalid workflow definition: ${(v as { ok: false; error: string[] }).error.join(", ")}`); 
+        .with({ ok: false }, v => {
+          throw new Error(`Invalid workflow definition: ${(v as { ok: false; error: string[] }).error.join(", ")}`);
         })
         .with({ ok: true }, v => {
           definition = (v as { ok: true; value: WorkflowDefinition }).value;
@@ -559,7 +616,14 @@ export const App = () => {
     }
   }>) => {
     router.add(method, path, async (ctx, next) => {
-      await handler(ctx as any);
+      await handler(ctx as Context & {
+        validated: {
+          params: ValidationResult<P>;
+          query: ValidationResult<Q>;
+          body: ValidationResult<B>;
+          headers: ValidationResult<Record<string, string>>;
+        }
+      });
       await next();
     });
     return appApi;
@@ -571,7 +635,7 @@ export const App = () => {
       middlewares.push(middleware);
       return appApi;
     },
-    
+
     get: <P extends Record<string, string> = Record<string, string>, Q extends Record<string, string> = Record<string, string>>(
       path: string,
       handler: Handler<Context & { validated: { params: ValidationResult<P>; query: ValidationResult<Q> } }>

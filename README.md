@@ -27,6 +27,8 @@ app.listen(3000);
   From route params to workflow states - TypeScript first
 - **ArkType Integration**
   Runtime validation with perfect type inference
+- **Custom Pattern Matching**
+  Elegant, type-safe pattern matching with exhaustiveness checking
 - **HATEOAS Ready**
   Built-in hypermedia support with `createLinks` utility
 - **Workflow Engine**
