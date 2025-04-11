@@ -395,6 +395,7 @@ const memoryTracker = setInterval(() => {
 // Clean up on shutdown
 Deno.addSignalListener("SIGINT", () => {
   clearInterval(memoryTracker);
+  // Gracefully shut down the server
   app.close();
 });
 ```

@@ -824,20 +824,9 @@ app.get<{ id: string }>("/orders/:id", async (ctx) => {
 });
 
 // Start server
-app.listen({ port: 3000 });
-console.log("Order workflow server running on http://localhost:3000");
-```
-
-## Conclusion
-
-The Mix Workflow Engine provides a powerful, type-safe approach to modeling complex business processes. By defining explicit states, events, and transitions, you can create robust workflows that ensure your business rules are consistently enforced.
-
-Key benefits include:
-
-- **Type Safety**: Compile-time guarantees for state transitions
-- **Performance Optimization**: Strategic mutation for high-throughput scenarios
-- **History Tracking**: Built-in audit trail of state changes
-- **Task Management**: Automated handling of actions triggered by transitions
-- **Explicit Modeling**: Clear, declarative definition of business processes
-
-By leveraging these capabilities, you can create sophisticated applications that effectively model and enforce your domain workflows.
+app.listen({
+  port: 3000,
+  onListen: ({ hostname, port }) => {
+    console.log(`Order workflow server running on http://${hostname}:${port}`);
+  }
+});

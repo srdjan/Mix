@@ -327,8 +327,19 @@ app.post("/products", async (ctx) => {
   );
 });
 
-// Start server
-app.listen({ port: 3000 });
+// Start server with native Deno.serve options
+app.listen({ 
+  port: 3000,
+  onListen: ({ hostname, port }) => {
+    console.log(`Product API running on http://${hostname}:${port}/`);
+  }
+});
+
+// Handle graceful shutdown
+Deno.addSignalListener("SIGINT", () => {
+  console.log("Shutting down API server...");
+  app.close();
+});
 ```
 
 ## Type-Driven Development

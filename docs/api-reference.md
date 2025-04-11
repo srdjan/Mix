@@ -543,26 +543,114 @@ orderWorkflow.createHandler("/orders/:id/confirm", async (ctx) => {
 });
 ```
 
-## Utilities Reference
+## Type Definitions
 
 ```typescript
-// Context utilities
-utils.setStatus(ctx, statusCode); // Set response status code
-utils.setHeader(ctx, key, value); // Set response header
-utils.setResponse(ctx, response); // Set response object
-utils.createResponse(ctx, data, options); // Create response from data
+// Application types
+type App = {
+  use: (middleware: Middleware) => void;
+  get: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
+  post: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
+  put: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
+  delete: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
+  patch: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
+  options: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
+  head: <P = {}, B = unknown>(path: string, ...handlers: Handler[]) => void;
+  listen: (options: Deno.ServeOptions) => Deno.Server;
+  close: () => void;
+  workflow: <S extends string, E extends string>() => Workflow<S, E>;
+  utils: Utils;
+};
 
-// Validation utilities
-utils.validate(schema, input); // Validate input against schema
-utils.handleResult(result, ctx, successHandler, errorHandler); // Handle Result type
+// Context type
+type Context<P = {}, B = unknown> = {
+  request: Request;
+  url: URL;
+  params: Record<string, string>;
+  validated: {
+    params: Result<P, ValidationError>;
+    body: Result<B, ValidationError>;
+  };
+  state: Record<string, unknown>;
+  response?: Response;
+};
 
-// Pattern matching
-utils.match(value); // Create pattern matcher
+// Middleware and handler types
+type Next = () => Promise<void>;
+type Middleware = (ctx: Context, next: Next) => Promise<void> | void;
+type Handler<P = {}, B = unknown> = (ctx: Context<P, B>) => Promise<void | Response> | void | Response;
 
-// Workflow utilities
-utils.canTransition(instance, event); // Check if transition is possible
-utils.applyTransition(instance, event); // Apply transition
-utils.findTransition(instance, event); // Find transition definition
-utils.getPendingTasks(instance); // Get pending tasks
-utils.assignTask(instance, task); // Assign task
-```
+// Result type
+type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
+
+// Workflow types
+type Workflow<S extends string, E extends string> = {
+  load: (config: WorkflowConfig<S, E>) => void;
+  createHandler: (path: string, handler: WorkflowHandler<S, E>) => void;
+  toJSON: () => WorkflowConfig<S, E>;
+};
+
+type WorkflowConfig<S extends string, E extends string> = {
+  states: S[];
+  events: E[];
+  transitions: Transition<S, E>[];
+  initial: S;
+};
+
+type Transition<S extends string, E extends string> = {
+  from: S;
+  to: S;
+  on: E;
+  guard?: (instance: WorkflowInstance<S, E>) => boolean;
+  task?: WorkflowTask;
+};
+
+type WorkflowInstance<S extends string, E extends string> = {
+  id: string;
+  currentState: S;
+  history: WorkflowHistoryEntry<S, E>[];
+  tasks: WorkflowTask[];
+  data: Record<string, unknown>;
+};
+
+type WorkflowHistoryEntry<S extends string, E extends string> = {
+  from: S;
+  to: S;
+  event: E;
+  timestamp: number;
+};
+
+type WorkflowTask = {
+  id: string;
+  assign: string;
+  message: string;
+  dueDate?: Date;
+  completed?: boolean;
+  completedAt?: number;
+  completedBy?: string;
+};
+
+type WorkflowHandler<S extends string, E extends string> = (ctx: WorkflowContext<S, E>) => Promise<void | Response> | void | Response;
+
+type WorkflowContext<S extends string, E extends string> = Context & {
+  workflow: {
+    instance: WorkflowInstance<S, E>;
+    event: E;
+  };
+};
+
+// Utility types
+type Utils = {
+  setStatus: (ctx: Context, status: number) => Context;
+  setHeader: (ctx: Context, key: string, value: string) => Context;
+  setResponse: (ctx: Context, response: Response) => Context;
+  createResponse: <T>(ctx: Context, data: T, options?: ResponseOptions) => Response;
+  validate: <T>(schema: Schema<T>, data: unknown) => Result<T, ValidationError>;
+  handleResult: <T, E>(result: Result<T, E>, ctx: Context, onSuccess: (value: T, ctx: Context) => Response | void, onError: (error: E, ctx: Context) => Response | void) => Response | void;
+  match: <T>(value: T) => Matcher<T>;
+  canTransition: <S extends string, E extends string>(instance: WorkflowInstance<S, E>, event: E) => boolean;
+  applyTransition: <S extends string, E extends string>(instance: WorkflowInstance<S, E>, event: E) => boolean;
+  findTransition: <S extends string, E extends string>(instance: WorkflowInstance<S, E>, event: E) => Transition<S, E> | undefined;
+  getPendingTasks: <S extends string, E extends string>(instance: WorkflowInstance<S, E>) => WorkflowTask[];
+  assignTask: <S extends string, E extends string>(instance: WorkflowInstance<S, E>, task: WorkflowTask) => void;
+};

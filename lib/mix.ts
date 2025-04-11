@@ -96,7 +96,7 @@ const validate = <T>(schema: ReturnType<typeof type>, input: unknown): Validatio
 };
 
 // Enhanced context with response property
-type Context = {
+export type Context = {
   request: Request;
   status: number;
   headers: Headers;
@@ -563,15 +563,7 @@ export const App = () => {
 
     workflow: () => createWorkflowEngine(),
 
-    listen: (options: Deno.ServeOptions) => {
-      return Deno.serve({
-        ...options,
-        signal: controller.signal,
-        onListen: options.onListen || (() => {
-          // Default onListen implementation
-        })
-      }, handleRequest);
-    },
+    listen: (port: number) => Deno.serve({ port }, handleRequest),
 
     close: () => controller.abort(),
 

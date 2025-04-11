@@ -337,6 +337,29 @@ app.get("/health/memory", (ctx) => {
 });
 ```
 
-## Conclusion
+### Graceful Shutdown
 
-Memory optimization in Mix applications requires a holistic approach across application architecture, coding practices, and runtime configuration. By implementing these strategies, you can build high-performance, memory-efficient Mix applications that maintain consistent performance even under high load.
+Ensure proper cleanup when shutting down:
+
+```typescript
+// Create controller for graceful shutdown
+const controller = new AbortController();
+
+// Start server
+app.listen({
+  port: 3000,
+  // Other options...
+});
+
+// Handle shutdown signals
+Deno.addSignalListener("SIGINT", () => {
+  console.log("Shutting down gracefully...");
+  
+  // Close the server
+  app.close();
+  
+  // Additional cleanup
+  // ...
+  
+  console.log("Shutdown complete");
+});

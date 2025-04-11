@@ -844,5 +844,7 @@ Remember:
 - Handle errors explicitly with Result types
 - Test thoroughly at all levels
 - Implement proper resource management
+- Use native Deno.serve options for server configuration
+- Properly handle graceful shutdown with app.close()
 
 This approach gives you the best of both worlds: the performance of mutation-based code where it matters, and the safety and maintainability of functional patterns everywhere else.
