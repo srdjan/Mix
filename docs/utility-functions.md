@@ -4,7 +4,7 @@
 
 Mix provides a set of utility functions to simplify common tasks in API development. These functions are designed to be composable, type-safe, and performance-optimized. They help maintain consistency across your application and reduce boilerplate code.
 
-The utility functions now use pattern matching for more elegant and type-safe implementations, leveraging Mix's custom `match` function.
+The utility functions now use pattern matching for more elegant and type-safe implementations, leveraging Mix's custom `match` function, which is implemented in the framework rather than imported from ArkType.
 
 ## Core Utility Functions
 
@@ -234,7 +234,7 @@ The utility functions use Mix's custom `match` function for pattern matching, wh
 
 ### Custom `match` Function Implementation
 
-Mix implements its own pattern matching function rather than relying on external libraries. This custom implementation provides a fluent API for pattern matching with type safety:
+After evaluating options, we decided to implement our own pattern matching function rather than using ArkType's `match`. This custom implementation provides a fluent API for pattern matching with type safety and is more concise for our specific use cases:
 
 ```typescript
 // Custom pattern matching implementation

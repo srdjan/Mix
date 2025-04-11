@@ -1,17 +1,30 @@
 {
   "version": "4",
   "specifiers": {
-    "npm:arktype@1.0.29-alpha": "1.0.29-alpha"
+    "npm:arktype@2.1.0": "2.1.0"
   },
   "npm": {
-    "arktype@1.0.29-alpha": {
-      "integrity": "sha512-glMLgVhIQRSkR3tymiS+POAcWVJH09sfrgic0jHnyFL8BlhHAJZX2BzdImU9zYr1y9NBqy+U93ZNrRTHXsKRDw=="
+    "@ark/schema@0.40.0": {
+      "integrity": "sha512-vD78TCZkoMWYDVfJVyoBI4ndxaR5jGUeYQuhFNZHXV8Ve2pKrwb4vQFD/VHg7GgF8Pd1pxy0CPouerKNR3y79g==",
+      "dependencies": [
+        "@ark/util"
+      ]
+    },
+    "@ark/util@0.40.0": {
+      "integrity": "sha512-YN+qWGs1q5Pl19VcnCWZMUpDEKW9aST6kuSOs0iAswDDe494xjgmg+DJeX0OF2MspH5yY03VqitNcvkywqXNpw=="
+    },
+    "arktype@2.1.0": {
+      "integrity": "sha512-BjXPbh4S8nBSuHmlakrQ+ViiGIhTcxAw7dWuJjW3nlHdY8wGktuuKfP52eWjmC3Y/Og1BbbRYEDGr/H0Kg26Mg==",
+      "dependencies": [
+        "@ark/schema",
+        "@ark/util"
+      ]
     }
   },
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@1",
-      "npm:arktype@1.0.29-alpha"
+      "npm:arktype@2.1.0"
     ]
   }
 }
