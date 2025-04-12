@@ -1,6 +1,5 @@
 import { type, scope } from "arktype";
 
-export type { Infer } from "arktype";
 export { type, scope };
 
 // Custom pattern matching implementation

@@ -15,7 +15,6 @@ Mixon is a minimalist, type-safe API and workflow framework for Deno. It provide
 ```typescript
 // deps.ts
 export { App, type, scope, match } from "https://deno.land/x/Mixon/mod.ts";
-export type { Infer } from "https://deno.land/x/Mixon/mod.ts";
 ```
 
 ## Core Concepts
