@@ -1,6 +1,6 @@
 {
   "name": "@srdjan/mixon",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "exports": "./mod.ts",
   "description": "Type-Safe API & Workflow Microframework for Deno",
   "readme": "./JSR.md",
