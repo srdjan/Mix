@@ -29,6 +29,8 @@ export const Layout = ({ title, children }: LayoutProps) => (
         .btn:hover { background: #2980b9; }
         .btn-secondary { background: #2ecc71; }
         .btn-secondary:hover { background: #27ae60; }
+        .btn-small { display: inline-block; background: #3498db; color: white; padding: 0.25rem 0.5rem; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 0.8rem; }
+        .btn-small:hover { background: #2980b9; }
         .btn-group { display: flex; gap: 0.5rem; margin-top: 1rem; }
         .btn-group-column { flex-direction: column; align-items: flex-start; }
         footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #eee; color: #666; font-size: 0.9rem; }
@@ -80,10 +82,23 @@ export const Layout = ({ title, children }: LayoutProps) => (
         .quantity-input { width: 50px; text-align: center; margin: 0 0.5rem; padding: 0.5rem; }
 
         /* Cart and notifications */
-        .cart-indicator { position: fixed; top: 1rem; right: 1rem; background: #3498db; color: white; padding: 0.5rem 1rem; border-radius: 4px; }
+        .cart-container { position: fixed; top: 1rem; right: 1rem; z-index: 100; display: flex; align-items: center; gap: 0.5rem; }
+        .cart-count { background: #3498db; color: white; padding: 0.5rem 1rem; border-radius: 4px; }
+        .cart-button { background: #2ecc71; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+        .cart-button:hover { background: #27ae60; }
         .cart-notification { background: #2ecc71; color: white; padding: 1rem; margin-top: 1rem; display: none; }
         .cart-notification.active { display: block; }
         .close-btn { margin-left: 10px; background: none; border: none; color: white; cursor: pointer; }
+
+        /* Tables */
+        .cart-table { width: 100%; border-collapse: collapse; }
+        .cart-table th, .cart-table td { padding: 8px; border-bottom: 1px solid #ddd; }
+        .cart-table th { text-align: left; }
+        .cart-table td.price, .cart-table th.price { text-align: right; }
+        .cart-table td.quantity, .cart-table th.quantity { text-align: center; }
+        .cart-table td.total, .cart-table th.total { text-align: right; }
+        .cart-table td.actions, .cart-table th.actions { text-align: center; }
+        .cart-table tr.total-row td { font-weight: bold; }
 
         /* Error display */
         .error-result { margin-top: 1.5rem; padding: 1rem; background: #f5f5f5; border-radius: 4px; }
@@ -93,13 +108,25 @@ export const Layout = ({ title, children }: LayoutProps) => (
     </head>
     <body>
       {/* Cart indicator with HTMX */}
-      <div
-        class="cart-indicator"
-        hx-get="/api/cart/count"
-        hx-trigger="load, every 2s"
-        hx-swap="innerHTML"
-      >
-        Cart: 0
+      <div class="cart-container">
+        <div class="cart-count">
+          <span>Items: </span>
+          <span
+            id="cart-count"
+            hx-get="/api/cart/count"
+            hx-trigger="load, every 2s"
+            hx-swap="innerHTML"
+          >0</span>
+        </div>
+        <button
+          type="button"
+          class="cart-button"
+          hx-get="/api/fragments/cart"
+          hx-target="#content"
+          hx-indicator="#spinner"
+        >
+          View Cart
+        </button>
       </div>
 
       <header>
@@ -159,6 +186,16 @@ export const Layout = ({ title, children }: LayoutProps) => (
                   hx-target="#content"
                 >
                   Error Demo
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  hx-get="/api/fragments/cart"
+                  hx-target="#content"
+                  hx-indicator="#spinner"
+                >
+                  View Cart
                 </a>
               </li>
             </ul>

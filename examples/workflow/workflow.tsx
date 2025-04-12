@@ -15,6 +15,16 @@ const app = App();
 const { utils } = app;
 const { MediaType, createResponse, handleError } = utils;
 
+// Cart state
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+const cart: CartItem[] = [];
+
 // Sample data
 const products = [
   {
@@ -238,16 +248,66 @@ app.get("/api/decrement", (ctx): void => {
 });
 
 // Add to cart
-app.post("/api/cart/add", (ctx): void => {
-  // In a real app, you would add to a session-based cart
-  // Here we just return a success message
-  ctx.response = new Response(
-    `<div id="notification" class="cart-notification active">
-      Item added to cart successfully!
-      <button type="button" hx-get="/api/cart/hide-notification" hx-target="#notification" hx-swap="outerHTML" class="close-btn">×</button>
-    </div>`,
-    { headers: { "Content-Type": "text/html" } },
-  );
+app.post("/api/cart/add", async (ctx): Promise<void> => {
+  try {
+    // Get the data from the request
+    const contentType = ctx.request.headers.get("Content-Type") || "";
+
+    let productId = "";
+    let name = "";
+    let price = 0;
+    let quantity = 1;
+
+    if (contentType.includes("application/json")) {
+      // Handle JSON data
+      const body = await ctx.request.json();
+      productId = body.productId;
+      name = body.name;
+      price = parseFloat(body.price);
+      quantity = body.quantity ? parseInt(body.quantity, 10) : 1;
+    } else if (contentType.includes("application/x-www-form-urlencoded") ||
+               contentType.includes("multipart/form-data")) {
+      // Handle form data
+      const formData = await ctx.request.formData();
+      productId = formData.get("productId") as string;
+      name = formData.get("name") as string;
+      price = parseFloat(formData.get("price") as string);
+      quantity = formData.get("quantity") ? parseInt(formData.get("quantity") as string, 10) : 1;
+    } else {
+      // Handle URL encoded parameters
+      const params = new URLSearchParams(await ctx.request.text());
+      productId = params.get("productId") || "";
+      name = params.get("name") || "";
+      price = parseFloat(params.get("price") || "0");
+      quantity = params.get("quantity") ? parseInt(params.get("quantity") || "1", 10) : 1;
+    }
+
+    // Check if product already exists in cart
+    const existingItem = cart.find(item => item.id === productId);
+
+    if (existingItem) {
+      // Update quantity if product already in cart
+      existingItem.quantity += quantity;
+    } else {
+      // Add new item to cart
+      cart.push({
+        id: productId,
+        name,
+        price,
+        quantity
+      });
+    }
+
+    ctx.response = new Response(
+      `<div id="notification" class="cart-notification active">
+        ${quantity} item(s) added to cart successfully!
+        <button type="button" hx-get="/api/cart/hide-notification" hx-target="#notification" hx-swap="outerHTML" class="close-btn">×</button>
+      </div>`,
+      { headers: { "Content-Type": "text/html" } },
+    );
+  } catch (error) {
+    handleError(ctx, 400, "Invalid request", error instanceof Error ? error.message : String(error));
+  }
 });
 
 // Hide cart notification
@@ -260,12 +320,268 @@ app.get("/api/cart/hide-notification", (ctx): void => {
 
 // Get cart count
 app.get("/api/cart/count", (ctx): void => {
-  // In a real app, you would get the actual cart count from a session
-  const count = Math.floor(Math.random() * 5); // Simulate random cart count for demo
+  const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
   ctx.response = new Response(
-    `Cart: ${count}`,
+    `${totalItems}`,
     { headers: { "Content-Type": "text/html" } },
   );
+});
+
+// View cart
+app.get("/api/fragments/cart", (ctx): void => {
+  const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+  const totalPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2);
+
+  let html;
+
+  if (totalItems === 0) {
+    html = renderSSR(
+      <div>
+        {/* Hidden spinner for HTMX indicators */}
+        <div id="spinner" class="htmx-indicator">
+          <div class="spinner"></div> <span>Loading...</span>
+        </div>
+        <h2>Your Shopping Cart</h2>
+        <p>Your cart is empty.</p>
+        <button
+          type="button"
+          class="btn margin-top"
+          hx-get="/api/fragments/products"
+          hx-target="#content"
+          hx-indicator="#spinner"
+        >
+          Continue Shopping
+        </button>
+      </div>
+    );
+  } else {
+    html = renderSSR(
+      <div>
+        {/* Hidden spinner for HTMX indicators */}
+        <div id="spinner" class="htmx-indicator">
+          <div class="spinner"></div> <span>Loading...</span>
+        </div>
+        <h2>Your Shopping Cart</h2>
+        <p>{totalItems} item(s) in your cart</p>
+
+        <div class="margin-top margin-bottom">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="price">Price</th>
+                <th class="quantity">Quantity</th>
+                <th class="total">Total</th>
+                <th class="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cart.map(item => (
+                <tr>
+                  <td>{item.name}</td>
+                  <td class="price">${item.price.toFixed(2)}</td>
+                  <td class="quantity">{item.quantity}</td>
+                  <td class="total">${(item.price * item.quantity).toFixed(2)}</td>
+                  <td class="actions">
+                    <button
+                      type="button"
+                      class="btn-small"
+                      hx-delete={`/api/cart/remove/${item.id}`}
+                      hx-target="#content"
+                      hx-swap="outerHTML"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              <tr class="total-row">
+                <td colspan="3" class="price">Total:</td>
+                <td class="total">${totalPrice}</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex flex-gap">
+          <button
+            type="button"
+            class="btn"
+            hx-get="/api/fragments/products"
+            hx-target="#content"
+            hx-indicator="#spinner"
+          >
+            Continue Shopping
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            hx-delete="/api/cart/clear"
+            hx-target="#content"
+            hx-swap="outerHTML"
+          >
+            Clear Cart
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" },
+  });
+});
+
+// Remove item from cart
+app.delete<{ id: string }>("/api/cart/remove/:id", (ctx): void => {
+  if (!ctx.validated.params.ok) {
+    handleError(ctx, 400, "Invalid product ID", ctx.validated.params.error);
+    return;
+  }
+
+  const productId = ctx.validated.params.value.id;
+  const index = cart.findIndex(item => item.id === productId);
+
+  if (index !== -1) {
+    cart.splice(index, 1);
+  }
+
+  // Return the updated cart view directly
+  const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+  const totalPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2);
+
+  let html;
+
+  if (totalItems === 0) {
+    html = renderSSR(
+      <div id="content" class="content-card">
+        {/* Hidden spinner for HTMX indicators */}
+        <div id="spinner" class="htmx-indicator">
+          <div class="spinner"></div> <span>Loading...</span>
+        </div>
+        <h2>Your Shopping Cart</h2>
+        <p>Your cart is empty.</p>
+        <button
+          type="button"
+          class="btn margin-top"
+          hx-get="/api/fragments/products"
+          hx-target="#content"
+          hx-indicator="#spinner"
+        >
+          Continue Shopping
+        </button>
+      </div>
+    );
+  } else {
+    html = renderSSR(
+      <div id="content" class="content-card">
+        {/* Hidden spinner for HTMX indicators */}
+        <div id="spinner" class="htmx-indicator">
+          <div class="spinner"></div> <span>Loading...</span>
+        </div>
+        <h2>Your Shopping Cart</h2>
+        <p>{totalItems} item(s) in your cart</p>
+
+        <div class="margin-top margin-bottom">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="price">Price</th>
+                <th class="quantity">Quantity</th>
+                <th class="total">Total</th>
+                <th class="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cart.map(item => (
+                <tr>
+                  <td>{item.name}</td>
+                  <td class="price">${item.price.toFixed(2)}</td>
+                  <td class="quantity">{item.quantity}</td>
+                  <td class="total">${(item.price * item.quantity).toFixed(2)}</td>
+                  <td class="actions">
+                    <button
+                      type="button"
+                      class="btn-small"
+                      hx-delete={`/api/cart/remove/${item.id}`}
+                      hx-target="#content"
+                      hx-swap="outerHTML"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              <tr class="total-row">
+                <td colspan="3" class="price">Total:</td>
+                <td class="total">${totalPrice}</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex flex-gap">
+          <button
+            type="button"
+            class="btn"
+            hx-get="/api/fragments/products"
+            hx-target="#content"
+            hx-indicator="#spinner"
+          >
+            Continue Shopping
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            hx-delete="/api/cart/clear"
+            hx-target="#content"
+            hx-swap="outerHTML"
+          >
+            Clear Cart
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" },
+  });
+});
+
+// Clear cart
+app.delete("/api/cart/clear", (ctx): void => {
+  cart.length = 0; // Clear the cart
+
+  // Return the empty cart view directly
+  const html = renderSSR(
+    <div id="content" class="content-card">
+      {/* Hidden spinner for HTMX indicators */}
+      <div id="spinner" class="htmx-indicator">
+        <div class="spinner"></div> <span>Loading...</span>
+      </div>
+      <h2>Your Shopping Cart</h2>
+      <p>Your cart is empty.</p>
+      <button
+        type="button"
+        class="btn margin-top"
+        hx-get="/api/fragments/products"
+        hx-target="#content"
+        hx-indicator="#spinner"
+      >
+        Continue Shopping
+      </button>
+    </div>
+  );
+
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" },
+  });
 });
 
 // Get related products

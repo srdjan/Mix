@@ -23,44 +23,50 @@ export const ProductDetail = ({ product }: ProductDetailProps) => (
     <div class="product-price product-price-lg">${product.price}</div>
     <div class="margin-bottom margin-top">{product.description}</div>
 
-    {/* Quantity control with HTMX */}
-    <div class="quantity-control">
-      <button
-        type="button"
-        class="quantity-btn"
-        hx-get="/api/decrement?value=1"
-        hx-target="#quantity"
-        hx-swap="outerHTML"
-      >-</button>
-      <input
-        type="number"
-        id="quantity"
-        name="quantity"
-        value="1"
-        min="1"
-        max="10"
-        class="quantity-input"
-      />
-      <button
-        type="button"
-        class="quantity-btn"
-        hx-get="/api/increment?value=1"
-        hx-target="#quantity"
-        hx-swap="outerHTML"
-      >+</button>
-    </div>
-
-    {/* Add to cart button with HTMX */}
-    <button
-      type="button"
-      class="btn"
+    {/* Add to cart form with HTMX */}
+    <form
       hx-post="/api/cart/add"
-      hx-vals={`{"productId": "${product.id}", "name": "${product.name}", "price": "${product.price}"}`}
       hx-target="#notification"
       hx-swap="outerHTML"
     >
-      Add to Cart
-    </button>
+      <input type="hidden" name="productId" value={product.id} />
+      <input type="hidden" name="name" value={product.name} />
+      <input type="hidden" name="price" value={product.price} />
+
+      {/* Quantity control */}
+      <div class="quantity-control">
+        <button
+          type="button"
+          class="quantity-btn"
+          hx-get="/api/decrement?value=1"
+          hx-target="#quantity"
+          hx-swap="outerHTML"
+        >-</button>
+        <input
+          type="number"
+          id="quantity"
+          name="quantity"
+          value="1"
+          min="1"
+          max="10"
+          class="quantity-input"
+        />
+        <button
+          type="button"
+          class="quantity-btn"
+          hx-get="/api/increment?value=1"
+          hx-target="#quantity"
+          hx-swap="outerHTML"
+        >+</button>
+      </div>
+
+      <button
+        type="submit"
+        class="btn"
+      >
+        Add to Cart
+      </button>
+    </form>
 
     <div id="notification" class="margin-top"></div>
 
