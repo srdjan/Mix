@@ -12,7 +12,7 @@ The utility functions now use pattern matching for more elegant and type-safe im
 
 #### `createResponse`
 
-Creates a standardized response object with optional HATEOAS links and metadata using pattern matching.
+Creates a standardized response object with content negotiation, optional HATEOAS links, and metadata using pattern matching.
 
 ```typescript
 const response = utils.createResponse(ctx, data, options);
@@ -25,89 +25,136 @@ const response = utils.createResponse(ctx, data, options);
 - `options`: Optional configuration
   - `links`: HATEOAS links for the resource
   - `meta`: Additional metadata
+  - `template`: HTML template string for HTML responses
+  - `mediaType`: Override the preferred media type from the context
 
 **Implementation:**
 
 ```typescript
-const createResponse = (ctx: Context, data: unknown, options?: {
+export const createResponse = (ctx: Context, data: unknown, options?: {
   links?: Record<string, unknown>;
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown>;
+  template?: string; // HTML template string
+  mediaType?: MediaType; // Override content negotiation
 }): Response => {
-  // Use pattern matching for different response scenarios
-  return match<{ hasOptions: boolean; hasLinks: boolean; hasMeta: boolean }, Response>({
-    hasOptions: !!options,
+  // Determine media type (explicit override or from context)
+  const mediaType = options?.mediaType || ctx.preferredMediaType;
+
+  // Use pattern matching for different response scenarios and media types
+  return match<{ mediaType: MediaType; hasLinks: boolean; hasMeta: boolean }, Response>({
+    mediaType,
     hasLinks: !!options?.links,
     hasMeta: !!options?.meta
   })
-    .with({ hasOptions: false }, () => {
-      return new Response(JSON.stringify({ data }), {
+    // HAL format responses
+    .with({ mediaType: MediaType.HAL, hasLinks: true }, () => {
+      // HAL format: https://stateless.group/hal_specification.html
+      const halResponse: Record<string, unknown> = {
+        ...(typeof data === 'object' && data !== null ? data : { data }),
+        _links: options!.links
+      };
+
+      if (options?.meta) {
+        Object.assign(halResponse, { _meta: options.meta });
+      }
+
+      return new Response(JSON.stringify(halResponse), {
         status: ctx.status || 200,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.HAL }
       });
     })
-    .with({ hasLinks: true, hasMeta: true }, () => {
+    // HTML responses
+    .with({ mediaType: MediaType.HTML }, () => {
+      let html = renderHtml(data, options?.template);
+
+      // Add links to HTML if provided
+      if (options?.links) {
+        html += '\n  <div class="links">\n    <h2>Links</h2>\n    <ul>';
+        for (const [rel, href] of Object.entries(options.links as Record<string, string>)) {
+          html += `\n      <li><a href="${href}">${rel}</a></li>`;
+        }
+        html += '\n    </ul>\n  </div>';
+      }
+
+      // Add metadata to HTML if provided
+      if (options?.meta) {
+        html += '\n  <div class="meta">\n    <h2>Metadata</h2>\n    <pre>' +
+          JSON.stringify(options.meta, null, 2) +
+          '</pre>\n  </div>';
+      }
+
+      html += '\n</body>\n</html>';
+
+      return new Response(html, {
+        status: ctx.status || 200,
+        headers: { "Content-Type": MediaType.HTML }
+      });
+    })
+    // Standard JSON responses
+    .with({ mediaType: MediaType.JSON, hasLinks: true, hasMeta: true }, () => {
       return new Response(JSON.stringify({
         data,
         _links: options!.links,
         _meta: options!.meta
       }), {
         status: ctx.status || 200,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.JSON }
       });
     })
-    .with({ hasLinks: true, hasMeta: false }, () => {
-      return new Response(JSON.stringify({
-        data,
-        _links: options!.links
-      }), {
-        status: ctx.status || 200,
-        headers: { "Content-Type": "application/json" }
-      });
-    })
-    .with({ hasLinks: false, hasMeta: true }, () => {
-      return new Response(JSON.stringify({
-        data,
-        _meta: options!.meta
-      }), {
-        status: ctx.status || 200,
-        headers: { "Content-Type": "application/json" }
-      });
-    })
-    .exhaustive();
+    // ... other cases
 };
 ```
 
 **Examples:**
 
 ```typescript
-// Basic response
+// Basic response (format determined by Accept header)
 const response = utils.createResponse(ctx, {
   id: "123",
   name: "Product Name"
 });
 
-// With HATEOAS links
+// Force HAL format response
 const response = utils.createResponse(ctx, product, {
   links: {
-    self: `/products/${product.id}`,
-    reviews: `/products/${product.id}/reviews`,
-    category: `/categories/${product.category}`
-  }
+    self: { href: `/products/${product.id}` },
+    collection: { href: '/products' }
+  },
+  mediaType: MediaType.HAL
 });
 
-// With metadata
+// HTML response with custom template
+const template = `<!DOCTYPE html>
+<html>
+<head>
+  <title>{{name}}</title>
+</head>
+<body>
+  <h1>{{name}}</h1>
+  <p>Price: ${{price}}</p>
+  <p>{{description}}</p>
+</body>
+</html>`;
+
+const response = utils.createResponse(ctx, product, {
+  template,
+  mediaType: MediaType.HTML
+});
+
+// JSON response with metadata
 const response = utils.createResponse(ctx, results, {
   meta: {
     total: 100,
     page: 1,
     limit: 10
-  }
+  },
+  mediaType: MediaType.JSON
 });
 ```
 
 #### `handleError`
 
-Provides consistent error handling with standardized formatting using pattern matching.
+Provides consistent error handling with standardized formatting using pattern matching and content negotiation.
 
 ```typescript
 utils.handleError(ctx, status, message, details);
@@ -123,24 +170,55 @@ utils.handleError(ctx, status, message, details);
 **Implementation:**
 
 ```typescript
-const handleError = (ctx: Context, status: number, message: string, details?: unknown): Context => {
+export const handleError = (ctx: Context, status: number, message: string, details?: unknown): Context => {
   ctx.status = status;
 
-  // Use pattern matching for different error scenarios
-  ctx.response = match<{ status: number; hasDetails: boolean }, Response>({ status, hasDetails: details !== undefined })
-    .with({ hasDetails: true }, () => {
-      return new Response(JSON.stringify({ error: message, details }), {
+  // Use pattern matching for different error scenarios and media types
+  ctx.response = match<{ mediaType: MediaType; hasDetails: boolean }, Response>({
+    mediaType: ctx.preferredMediaType,
+    hasDetails: details !== undefined
+  })
+    .with({ mediaType: MediaType.HTML }, () => {
+      // HTML error response
+      const errorHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error ${status}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 800px; margin: 0 auto; }
+    .error { color: #e74c3c; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1 class="error">Error ${status}</h1>
+  <p>${message}</p>
+  ${details ? `<h2>Details</h2>
+  <pre>${JSON.stringify(details, null, 2)}</pre>` : ''}
+</body>
+</html>`;
+
+      return new Response(errorHtml, {
         status,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.HTML }
       });
     })
-    .with({ hasDetails: false }, () => {
-      return new Response(JSON.stringify({ error: message }), {
+    .with({ mediaType: MediaType.HAL, hasDetails: true }, () => {
+      // HAL error response with details
+      return new Response(JSON.stringify({
+        error: message,
+        details,
+        _links: {
+          help: { href: "/docs/errors" }
+        }
+      }), {
         status,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.HAL }
       });
     })
-    .exhaustive();
+    // ... other cases
 
   return ctx;
 };
@@ -149,7 +227,7 @@ const handleError = (ctx: Context, status: number, message: string, details?: un
 **Examples:**
 
 ```typescript
-// Basic error
+// Basic error (format determined by Accept header)
 utils.handleError(ctx, 404, "Resource not found");
 
 // Validation error
@@ -222,6 +300,148 @@ const links = {
   related: `/products/${product.id}/related`
 };
 ```
+
+#### `renderHtml`
+
+Renders data as HTML using an optional template.
+
+```typescript
+const html = utils.renderHtml(data, template);
+```
+
+**Parameters:**
+
+- `data`: The data to render
+- `template`: Optional HTML template with placeholders in the format `{{key}}`
+
+**Implementation:**
+
+```typescript
+export const renderHtml = (data: unknown, template?: string): string => {
+  if (!template) {
+    // Default template for automatic rendering
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mix Response</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 800px; margin: 0 auto; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow: auto; }
+    a { color: #0074d9; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .links { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee; }
+    .meta { color: #666; font-size: 0.9rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Response Data</h1>
+  <pre>${JSON.stringify(data, null, 2)}</pre>
+`;
+
+    return html;
+  }
+
+  // Simple template variable replacement
+  let rendered = template;
+  const dataObj = typeof data === 'object' ? data : { value: data };
+
+  for (const [key, value] of Object.entries(dataObj as Record<string, unknown>)) {
+    const placeholder = `{{${key}}}`;
+    rendered = rendered.replace(new RegExp(placeholder, 'g'), String(value));
+  }
+
+  return rendered;
+};
+```
+
+**Examples:**
+
+```typescript
+// Using default template
+const html = utils.renderHtml({ name: "Product", price: 29.99 });
+
+// Using custom template
+const template = `<!DOCTYPE html>
+<html>
+<head>
+  <title>{{name}}</title>
+</head>
+<body>
+  <h1>{{name}}</h1>
+  <p>Price: ${{price}}</p>
+</body>
+</html>`;
+
+const html = utils.renderHtml({ name: "Product", price: 29.99 }, template);
+```
+
+#### `parseAcceptHeader`
+
+Parses the Accept header to determine the preferred media type.
+
+```typescript
+const mediaType = utils.parseAcceptHeader(acceptHeader);
+```
+
+**Parameters:**
+
+- `acceptHeader`: The Accept header string
+
+**Returns:**
+
+- The preferred media type (MediaType.JSON, MediaType.HAL, or MediaType.HTML)
+
+**Implementation:**
+
+```typescript
+export const parseAcceptHeader = (acceptHeader: string | null): MediaType => {
+  if (!acceptHeader) return MediaType.JSON;
+
+  const mediaTypes = acceptHeader.split(',').map(type => {
+    const [mediaType, qualityStr] = type.trim().split(';');
+    const quality = qualityStr ? parseFloat(qualityStr.split('=')[1]) : 1.0;
+    return { mediaType: mediaType.trim(), quality };
+  }).sort((a, b) => b.quality - a.quality);
+
+  for (const { mediaType } of mediaTypes) {
+    if (mediaType === MediaType.HAL) return MediaType.HAL;
+    if (mediaType === MediaType.HTML) return MediaType.HTML;
+    if (mediaType === MediaType.JSON) return MediaType.JSON;
+    if (mediaType === MediaType.ANY) return MediaType.JSON; // Default to JSON for */*
+  }
+
+  return MediaType.JSON; // Default to JSON if no match
+};
+```
+
+**Examples:**
+
+```typescript
+// Parse Accept header
+const mediaType = utils.parseAcceptHeader('text/html,application/xhtml+xml,application/xml;q=0.9');
+// Returns MediaType.HTML
+
+const mediaType = utils.parseAcceptHeader('application/hal+json');
+// Returns MediaType.HAL
+
+const mediaType = utils.parseAcceptHeader('application/json');
+// Returns MediaType.JSON
+
+const mediaType = utils.parseAcceptHeader('*/*');
+// Returns MediaType.JSON (default)
+```
+
+## Content Negotiation
+
+Mix supports content negotiation to serve responses in different formats based on the client's Accept header:
+
+- **application/json**: Standard JSON responses
+- **application/hal+json**: HAL format for hypermedia APIs
+- **text/html**: HTML responses for browser clients
+
+The framework automatically determines the preferred format from the Accept header and formats the response accordingly. You can also explicitly override the format using the `mediaType` option in `createResponse`.
 
 ## Pattern Matching
 

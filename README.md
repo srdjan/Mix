@@ -29,6 +29,10 @@ app.listen(3000);
   Runtime validation with perfect type inference
 - **Custom Pattern Matching**
   Built-in elegant, type-safe pattern matching with exhaustiveness checking
+- **Content Negotiation**
+  Automatic format selection based on Accept header (JSON, HAL, HTML)
+- **HTMX Integration**
+  Build interactive UIs with minimal JavaScript
 - **HATEOAS Ready**
   Built-in hypermedia support with `createLinks` utility
 - **Workflow Engine**
@@ -75,9 +79,10 @@ const app = App();
 const { utils } = app;
 const { handleError, createResponse, createLinks } = utils;
 
-// Simple endpoint
+// Simple endpoint with content negotiation
 app.get("/users", (ctx): void => {
   const users = [{ id: 1, name: "Alice" }];
+  // Response format determined by Accept header (JSON, HAL, or HTML)
   ctx.response = createResponse(ctx, users);
 });
 
@@ -92,9 +97,14 @@ app.post("/users", (ctx): void => {
   const userId = crypto.randomUUID();
 
   ctx.status = 201;
+  // Create response with HATEOAS links
   ctx.response = createResponse(ctx,
     { ...user, id: userId },
-    { links: createLinks('users', userId) }
+    {
+      links: createLinks('users', userId),
+      // Optional: force specific format regardless of Accept header
+      // mediaType: MediaType.HAL
+    }
   );
 });
 
@@ -167,6 +177,7 @@ Explore full capabilities at:
 | [Best Practices](./docs/best-practices.md) | Project structure, Error handling    |
 | [API Reference](./docs/api-reference.md)  | Full type definitions and options    |
 | [Utility Functions](./docs/utility-functions.md) | Error handling, Response creation   |
+| [HTMX Integration](./docs/htmx-integration.md) | Interactive UIs with minimal JS     |
 
 ## Contributing 🤝
 

@@ -95,13 +95,22 @@ const validate = <T>(schema: ReturnType<typeof type>, input: unknown): Validatio
   }
 };
 
-// Enhanced context with response property
+// Media type constants
+export enum MediaType {
+  JSON = 'application/json',
+  HAL = 'application/hal+json',
+  HTML = 'text/html',
+  ANY = '*/*'
+}
+
+// Enhanced context with response property and preferred media type
 export type Context = {
   request: Request;
   status: number;
   headers: Headers;
   state: Record<string, unknown>;
   response?: Response;
+  preferredMediaType: MediaType;
   validated: {
     body: ValidationResult<unknown>;
     params: ValidationResult<Record<string, string>>;
@@ -290,70 +299,236 @@ export const handleResult = <T, E, R>(
 export const handleError = (ctx: Context, status: number, message: string, details?: unknown): Context => {
   ctx.status = status;
 
-  // Use pattern matching for different error scenarios
-  ctx.response = match<{ status: number; hasDetails: boolean }, Response>({ status, hasDetails: details !== undefined })
+  // Use pattern matching for different error scenarios and media types
+  ctx.response = match<{ mediaType: MediaType; hasDetails: boolean }, Response>({
+    mediaType: ctx.preferredMediaType,
+    hasDetails: details !== undefined
+  })
+    .with({ mediaType: MediaType.HTML }, () => {
+      // HTML error response
+      const errorHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error ${status}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 800px; margin: 0 auto; }
+    .error { color: #e74c3c; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1 class="error">Error ${status}</h1>
+  <p>${message}</p>
+  ${details ? `<h2>Details</h2>
+  <pre>${JSON.stringify(details, null, 2)}</pre>` : ''}
+</body>
+</html>`;
+
+      return new Response(errorHtml, {
+        status,
+        headers: { "Content-Type": MediaType.HTML }
+      });
+    })
+    .with({ mediaType: MediaType.HAL, hasDetails: true }, () => {
+      // HAL error response with details
+      return new Response(JSON.stringify({
+        error: message,
+        details,
+        _links: {
+          help: { href: "/docs/errors" }
+        }
+      }), {
+        status,
+        headers: { "Content-Type": MediaType.HAL }
+      });
+    })
+    .with({ mediaType: MediaType.HAL, hasDetails: false }, () => {
+      // HAL error response without details
+      return new Response(JSON.stringify({
+        error: message,
+        _links: {
+          help: { href: "/docs/errors" }
+        }
+      }), {
+        status,
+        headers: { "Content-Type": MediaType.HAL }
+      });
+    })
     .with({ hasDetails: true }, () => {
+      // Default JSON error response with details
       return new Response(JSON.stringify({ error: message, details }), {
         status,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.JSON }
       });
     })
-    .with({ hasDetails: false }, () => {
+    .otherwise(() => {
+      // Default JSON error response without details
       return new Response(JSON.stringify({ error: message }), {
         status,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.JSON }
       });
-    })
-    .exhaustive();
+    });
 
   return ctx;
 };
 
+// HTML template rendering function
+export const renderHtml = (data: unknown, template?: string): string => {
+  if (!template) {
+    // Default template for automatic rendering
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mix Response</title>
+  <style>
+    body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 800px; margin: 0 auto; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow: auto; }
+    a { color: #0074d9; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .links { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee; }
+    .meta { color: #666; font-size: 0.9rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Response Data</h1>
+  <pre>${JSON.stringify(data, null, 2)}</pre>
+`;
+
+    return html;
+  }
+
+  // Simple template variable replacement
+  let rendered = template;
+  const dataObj = typeof data === 'object' ? data : { value: data };
+
+  for (const [key, value] of Object.entries(dataObj as Record<string, unknown>)) {
+    const placeholder = `{{${key}}}`;
+    rendered = rendered.replace(new RegExp(placeholder, 'g'), String(value));
+  }
+
+  return rendered;
+};
+
+// Parse Accept header to determine preferred media type
+export const parseAcceptHeader = (acceptHeader: string | null): MediaType => {
+  if (!acceptHeader) return MediaType.JSON;
+
+  const mediaTypes = acceptHeader.split(',').map(type => {
+    const [mediaType, qualityStr] = type.trim().split(';');
+    const quality = qualityStr ? parseFloat(qualityStr.split('=')[1]) : 1.0;
+    return { mediaType: mediaType.trim(), quality };
+  }).sort((a, b) => b.quality - a.quality);
+
+  for (const { mediaType } of mediaTypes) {
+    if (mediaType === MediaType.HAL) return MediaType.HAL;
+    if (mediaType === MediaType.HTML) return MediaType.HTML;
+    if (mediaType === MediaType.JSON) return MediaType.JSON;
+    if (mediaType === MediaType.ANY) return MediaType.JSON; // Default to JSON for */*
+  }
+
+  return MediaType.JSON; // Default to JSON if no match
+};
+
+// Enhanced createResponse with content negotiation
 export const createResponse = (ctx: Context, data: unknown, options?: {
   links?: Record<string, unknown>;
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown>;
+  template?: string; // HTML template string
+  mediaType?: MediaType; // Override content negotiation
 }): Response => {
-  // Use pattern matching for different response scenarios
-  return match<{ hasOptions: boolean; hasLinks: boolean; hasMeta: boolean }, Response>({
-    hasOptions: !!options,
+  // Determine media type (explicit override or from context)
+  const mediaType = options?.mediaType || ctx.preferredMediaType;
+
+  // Use pattern matching for different response scenarios and media types
+  return match<{ mediaType: MediaType; hasLinks: boolean; hasMeta: boolean }, Response>({
+    mediaType,
     hasLinks: !!options?.links,
     hasMeta: !!options?.meta
   })
-    .with({ hasOptions: false }, () => {
-      return new Response(JSON.stringify({ data }), {
+    // HAL format responses
+    .with({ mediaType: MediaType.HAL, hasLinks: true }, () => {
+      // HAL format: https://stateless.group/hal_specification.html
+      const halResponse: Record<string, unknown> = {
+        ...(typeof data === 'object' && data !== null ? data : { data }),
+        _links: options!.links
+      };
+
+      if (options?.meta) {
+        Object.assign(halResponse, { _meta: options.meta });
+      }
+
+      return new Response(JSON.stringify(halResponse), {
         status: ctx.status || 200,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.HAL }
       });
     })
-    .with({ hasLinks: true, hasMeta: true }, () => {
+    // HTML responses
+    .with({ mediaType: MediaType.HTML }, () => {
+      let html = renderHtml(data, options?.template);
+
+      // Add links to HTML if provided
+      if (options?.links) {
+        html += '\n  <div class="links">\n    <h2>Links</h2>\n    <ul>';
+        for (const [rel, href] of Object.entries(options.links as Record<string, string>)) {
+          html += `\n      <li><a href="${href}">${rel}</a></li>`;
+        }
+        html += '\n    </ul>\n  </div>';
+      }
+
+      // Add metadata to HTML if provided
+      if (options?.meta) {
+        html += '\n  <div class="meta">\n    <h2>Metadata</h2>\n    <pre>' +
+          JSON.stringify(options.meta, null, 2) +
+          '</pre>\n  </div>';
+      }
+
+      html += '\n</body>\n</html>';
+
+      return new Response(html, {
+        status: ctx.status || 200,
+        headers: { "Content-Type": MediaType.HTML }
+      });
+    })
+    // Standard JSON responses
+    .with({ mediaType: MediaType.JSON, hasLinks: true, hasMeta: true }, () => {
       return new Response(JSON.stringify({
         data,
         _links: options!.links,
         _meta: options!.meta
       }), {
         status: ctx.status || 200,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.JSON }
       });
     })
-    .with({ hasLinks: true, hasMeta: false }, () => {
+    .with({ mediaType: MediaType.JSON, hasLinks: true, hasMeta: false }, () => {
       return new Response(JSON.stringify({
         data,
         _links: options!.links
       }), {
         status: ctx.status || 200,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.JSON }
       });
     })
-    .with({ hasLinks: false, hasMeta: true }, () => {
+    .with({ mediaType: MediaType.JSON, hasLinks: false, hasMeta: true }, () => {
       return new Response(JSON.stringify({
         data,
         _meta: options!.meta
       }), {
         status: ctx.status || 200,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": MediaType.JSON }
       });
     })
-    .exhaustive();
+    .otherwise(() => {
+      // Default JSON response with no links or metadata
+      return new Response(JSON.stringify({ data }), {
+        status: ctx.status || 200,
+        headers: { "Content-Type": MediaType.JSON }
+      });
+    });
 };
 
 export const createLinks = (resourcePath: string, id: string): Record<string, string> => {
@@ -461,6 +636,10 @@ export const App = () => {
     const queryParams = Object.fromEntries(url.searchParams);
     const headerParams = Object.fromEntries(request.headers);
 
+    // Parse Accept header for content negotiation
+    const acceptHeader = request.headers.get('Accept');
+    const preferredMediaType = parseAcceptHeader(acceptHeader);
+
     const bodyResult = await match<string, Promise<ValidationResult<unknown>>>(request.method)
       .with('GET', () => Promise.resolve<ValidationResult<unknown>>({ ok: true, value: null }))
       .with('HEAD', () => Promise.resolve<ValidationResult<unknown>>({ ok: true, value: null }))
@@ -475,8 +654,9 @@ export const App = () => {
     return {
       request,
       status: 200,
-      headers: new Headers({ 'Content-Type': 'application/json' }),
+      headers: new Headers({ 'Content-Type': preferredMediaType }),
       state: {},
+      preferredMediaType,
       validated: {
         body: bodyResult as ValidationResult<unknown>,
         params: { ok: true, value: {} },
@@ -676,7 +856,10 @@ export const App = () => {
       findTransition,
       handleError,
       createResponse,
-      createLinks
+      createLinks,
+      renderHtml,
+      parseAcceptHeader,
+      MediaType
     }
   };
 
