@@ -1,6 +1,6 @@
 # Mixon Framework Workflow Example
 
-This example demonstrates Mixon's content negotiation capabilities and HTMX integration in a single-page application, along with workflow state management features.
+This Shopping Cart example demonstrates Mixon's content negotiation capabilities and HTMX integration in a single-page application, along with workflow state management features.
 
 ## Running the Example
 
