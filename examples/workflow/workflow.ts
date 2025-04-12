@@ -185,7 +185,7 @@ app.get<{ id: string }>("/products/:id", (ctx): void => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{name}} - Product Details</title>
   <!-- Include HTMX for interactive features -->
-  <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 800px; margin: 0 auto; }
     .price { font-size: 1.5rem; color: #2ecc71; font-weight: bold; }
@@ -275,7 +275,7 @@ app.get("/products/format/html", (ctx): void => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Products Catalog</title>
-  <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 800px; margin: 0 auto; }
     .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 2rem; }

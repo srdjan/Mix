@@ -6,7 +6,7 @@
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
-    "arktype": "npm:arktype@1.0.29-alpha",
+    "arktype": "npm:arktype@2.1.19",
     "nano": "https://deno.land/x/nano_jsx@v0.1.0/mod.ts"
   },
   "compilerOptions": {

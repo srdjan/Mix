@@ -11,7 +11,7 @@ Mix's content negotiation features work seamlessly with HTMX to create dynamic, 
 ### 1. Include HTMX in your HTML template
 
 ```html
-<script src="https://unpkg.com/htmx.org@1.9.6"></script>
+<script src="https://unpkg.com/htmx.org@2.0.4"></script>
 ```
 
 ### 2. Create API endpoints for HTMX interactions

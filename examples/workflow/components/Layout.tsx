@@ -8,7 +8,7 @@ export const Layout = ({ title, children }: LayoutProps) => (
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>{title}</title>
-      <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+      <script src="https://unpkg.com/htmx.org@2.0.4"></script>
       <style>{`
         body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 1000px; margin: 0 auto; }
         header { margin-bottom: 2rem; }

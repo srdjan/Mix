@@ -3,7 +3,7 @@
   "specifiers": {
     "jsr:@std/assert@1": "1.0.11",
     "jsr:@std/internal@^1.0.5": "1.0.5",
-    "npm:arktype@1.0.29-alpha": "1.0.29-alpha"
+    "npm:arktype@2.1.19": "2.1.19"
   },
   "jsr": {
     "@std/assert@1.0.11": {
@@ -17,8 +17,21 @@
     }
   },
   "npm": {
-    "arktype@1.0.29-alpha": {
-      "integrity": "sha512-glMLgVhIQRSkR3tymiS+POAcWVJH09sfrgic0jHnyFL8BlhHAJZX2BzdImU9zYr1y9NBqy+U93ZNrRTHXsKRDw=="
+    "@ark/schema@0.45.9": {
+      "integrity": "sha512-rG0v/JI0sibn/0wERAHTYVLCtEqoMP2IIlxnb+S5DrEjCI5wpubbZSWMDW50tZ8tV6FANu6zzHDeeKbp6lsZdg==",
+      "dependencies": [
+        "@ark/util"
+      ]
+    },
+    "@ark/util@0.45.9": {
+      "integrity": "sha512-0WYNAb8aRGp7dNt6xIvIrRzL7V1XL3u3PK2vcklhtTrdaP235DjC9qJhzidrxtWr68mA5ySSjUrgrXk622bKkw=="
+    },
+    "arktype@2.1.19": {
+      "integrity": "sha512-notORSuTSpfLV7rq0kYC4mTgIVlVR0xQuvtFxOaE9aKiXyON/kgoIBwZZcKeSSb4BebNcfJoGlxJicAUl/HMdw==",
+      "dependencies": [
+        "@ark/schema",
+        "@ark/util"
+      ]
     }
   },
   "remote": {
@@ -54,7 +67,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@1",
-      "npm:arktype@1.0.29-alpha"
+      "npm:arktype@2.1.19"
     ]
   }
 }
