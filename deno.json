@@ -1,11 +1,17 @@
 {
   "tasks": {
     "dev": "deno run --watch main.ts",
-    "workflow": "deno run --allow-net examples/workflow/workflow.ts",
-    "workflow:watch": "deno run --allow-net --watch examples/workflow/workflow.ts"
+    "workflow": "deno run --allow-net --allow-read examples/workflow/workflow.tsx",
+    "workflow:watch": "deno run --allow-net --allow-read --watch examples/workflow/workflow.tsx"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
-    "arktype": "npm:arktype@1.0.29-alpha"
+    "arktype": "npm:arktype@1.0.29-alpha",
+    "nano": "https://deno.land/x/nano_jsx@v0.1.0/mod.ts"
+  },
+  "compilerOptions": {
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment"
   }
 }

@@ -20,6 +20,7 @@ Then open your browser to [http://localhost:3000](http://localhost:3000) to see 
 
 - **Content Negotiation**: Serve JSON, HAL, and HTML from the same endpoints
 - **HTMX Integration**: Dynamic content swapping without JavaScript
+- **Nano JSX**: Server-side rendering with JSX components
 - **Interactive UI**: Search, sorting, and dynamic updates
 - **Single-Page Application**: Navigation without page reloads
 - **Responsive Design**: Works on mobile and desktop

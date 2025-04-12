@@ -7,6 +7,7 @@
 
 [![Deno Version](https://img.shields.io/badge/deno-2.2-blue?logo=deno)](https://deno.land)
 [![ArkType Version](https://img.shields.io/badge/arktype-2.1-orange?logo=deno)](https://arktype.io/)
+[![HTMX Version](https://img.shields.io/badge/htmx-2.0.4-green?logo=htmx)](https://htmx.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ```ts
@@ -90,6 +91,7 @@ This example demonstrates:
 
 - Content negotiation between JSON, HAL, and HTML
 - HTMX integration for interactive UI without JavaScript
+- Nano JSX for server-side rendering
 - Single-page application with dynamic content swapping
 - Workflow state management with transitions
 
