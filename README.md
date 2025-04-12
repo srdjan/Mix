@@ -72,6 +72,29 @@ Permissions (add to deno.json):
 
 ## Usage Examples 🛠️
 
+### Workflow Example with HTMX
+
+Try our interactive workflow example with HTMX integration:
+
+```bash
+# Run the workflow example
+deno task workflow
+
+# Run with file watching (auto-reload on changes)
+deno task workflow:watch
+```
+
+Then open your browser to [http://localhost:3000](http://localhost:3000) to see the application.
+
+This example demonstrates:
+
+- Content negotiation between JSON, HAL, and HTML
+- HTMX integration for interactive UI without JavaScript
+- Single-page application with dynamic content swapping
+- Workflow state management with transitions
+
+See [examples/workflow/README.md](./examples/workflow/README.md) for more details.
+
 ### Basic API
 
 ```typescript

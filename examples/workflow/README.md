@@ -1,4 +1,47 @@
-# Key Workflow Features Demonstrated
+# Mix Framework Workflow Example
+
+This example demonstrates Mix's content negotiation capabilities and HTMX integration in a single-page application, along with workflow state management features.
+
+## Running the Example
+
+You can run this example using Deno tasks:
+
+```bash
+# Run the workflow example
+deno task workflow
+
+# Run with file watching (auto-reload on changes)
+deno task workflow:watch
+```
+
+Then open your browser to [http://localhost:3000](http://localhost:3000) to see the application.
+
+## New Features
+
+- **Content Negotiation**: Serve JSON, HAL, and HTML from the same endpoints
+- **HTMX Integration**: Dynamic content swapping without JavaScript
+- **Interactive UI**: Search, sorting, and dynamic updates
+- **Single-Page Application**: Navigation without page reloads
+- **Responsive Design**: Works on mobile and desktop
+
+## Content Sections
+
+1. **Home**: Overview of the application
+2. **Products**: Interactive product catalog with search and sorting
+3. **Features**: Showcase of HTMX capabilities
+4. **API Formats**: Examples of different response formats
+5. **Error Demo**: Demonstration of error handling
+
+## HTMX Features Demonstrated
+
+- Content swapping with `hx-get` and `hx-target`
+- Form submission with `hx-post`
+- Search with debounce using `hx-trigger="keyup changed delay:500ms"`
+- Loading indicators with `hx-indicator`
+- Lazy loading with `hx-trigger="load"`
+- Polling with `hx-trigger="load, every 2s"`
+
+## Key Workflow Features Demonstrated
 
 ## **State Transitions**
 
