@@ -227,25 +227,22 @@ const safeParseBody = async (request: Request): Promise<Result<unknown, Error>> 
   try {
     const contentType = request.headers.get("content-type");
 
-    return match<{ isJson: boolean }, Promise<Result<unknown, Error>>>({ isJson: contentType?.includes("application/json") || false })
-      .with({ isJson: true }, async () => {
-        try {
-          const body = await request.json();
-          return { ok: true, value: body };
-        } catch (error) {
-          return {
-            ok: false,
-            error: error instanceof Error ? error : new Error(String(error))
-          };
-        }
-      })
-      .with({ isJson: false }, () => {
-        return Promise.resolve({
+    if (contentType?.includes("application/json")) {
+      try {
+        const body = await request.json();
+        return { ok: true, value: body };
+      } catch (error) {
+        return {
           ok: false,
-          error: new Error("Unsupported content type")
-        });
-      })
-      .exhaustive();
+          error: error instanceof Error ? error : new Error(String(error))
+        };
+      }
+    } else {
+      return {
+        ok: false,
+        error: new Error("Unsupported content type")
+      };
+    }
   } catch (error) {
     return {
       ok: false,
@@ -273,7 +270,7 @@ const compose = <T extends Context>(middlewares: Middleware<T>[]) =>
       await middlewares[i](ctx, () => dispatch(i + 1));
     };
 
-    return dispatch(0);
+    await dispatch(0);
   };
 
 // ======== CONTEXT HELPERS ========
