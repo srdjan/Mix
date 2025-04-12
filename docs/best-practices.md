@@ -1,8 +1,8 @@
-# Mix Best Practices
+# Mixon Best Practices
 
 ## Core Principles
 
-Mix's architecture balances performance optimization with functional programming principles. These best practices will help you create efficient, maintainable, and type-safe Mix applications.
+Mixon's architecture balances performance optimization with functional programming principles. These best practices will help you create efficient, maintainable, and type-safe Mixon applications.
 
 ### Strategic Immutability
 
@@ -487,7 +487,7 @@ orderWorkflow.createHandler("/orders/:id/events", async (ctx) => {
 
 ### Using Utility Functions
 
-Mix provides utility functions for consistent error handling and response creation:
+Mixon provides utility functions for consistent error handling and response creation:
 
 ```typescript
 // Import from lib/mix.ts
@@ -907,7 +907,7 @@ app.post<Record<string, string>, Product>("/products", (ctx): void => {
 
 ## Conclusion
 
-Mix balances performance optimization with functional programming principles. By following these best practices, you can create efficient, maintainable, and type-safe applications that leverage the full potential of the framework.
+Mixon balances performance optimization with functional programming principles. By following these best practices, you can create efficient, maintainable, and type-safe applications that leverage the full potential of the framework.
 
 Remember:
 

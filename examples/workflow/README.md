@@ -1,6 +1,6 @@
-# Mix Framework Workflow Example
+# Mixon Framework Workflow Example
 
-This example demonstrates Mix's content negotiation capabilities and HTMX integration in a single-page application, along with workflow state management features.
+This example demonstrates Mixon's content negotiation capabilities and HTMX integration in a single-page application, along with workflow state management features.
 
 ## Running the Example
 

@@ -1,10 +1,10 @@
-# HTMX Integration with Mix
+# HTMX Integration with Mixon
 
-Mix's content negotiation features work seamlessly with HTMX to create dynamic, interactive web applications with minimal JavaScript. This guide shows how to use HTMX with Mix to build modern web interfaces.
+Mixon's content negotiation features work seamlessly with HTMX to create dynamic, interactive web applications with minimal JavaScript. This guide shows how to use HTMX with Mixon to build modern web interfaces.
 
 ## Overview
 
-[HTMX](https://htmx.org/) allows you to access modern browser features directly from HTML, rather than using JavaScript. When combined with Mix's content negotiation and HTML templating, you can build rich, interactive applications with server-side rendering.
+[HTMX](https://htmx.org/) allows you to access modern browser features directly from HTML, rather than using JavaScript. When combined with Mixon's content negotiation and HTML templating, you can build rich, interactive applications with server-side rendering.
 
 ## Getting Started
 
@@ -181,7 +181,7 @@ See the complete example in `examples/content-negotiation.ts` which demonstrates
 
 ## Conclusion
 
-By combining Mix's content negotiation with HTMX, you can build modern, interactive web applications with minimal JavaScript. This approach offers several benefits:
+By combining Mixon's content negotiation with HTMX, you can build modern, interactive web applications with minimal JavaScript. This approach offers several benefits:
 
 - **Simpler Development**: Less client-side JavaScript to write and maintain
 - **Better Performance**: Smaller payload sizes and faster initial page loads

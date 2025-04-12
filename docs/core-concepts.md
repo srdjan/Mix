@@ -1,8 +1,8 @@
-# Mix Documentation
+# Mixon Documentation
 
 ## Introduction
 
-Mix is a minimalist, type-safe API and workflow framework for Deno. It provides:
+Mixon is a minimalist, type-safe API and workflow framework for Deno. It provides:
 
 - **Type-Safety**: End-to-end TypeScript with perfect inference
 - **Performance-Optimized**: Strategic mutation for high-throughput applications
@@ -14,15 +14,15 @@ Mix is a minimalist, type-safe API and workflow framework for Deno. It provides:
 
 ```typescript
 // deps.ts
-export { App, type, scope, match } from "https://deno.land/x/Mix/mod.ts";
-export type { Infer } from "https://deno.land/x/Mix/mod.ts";
+export { App, type, scope, match } from "https://deno.land/x/Mixon/mod.ts";
+export type { Infer } from "https://deno.land/x/Mixon/mod.ts";
 ```
 
 ## Core Concepts
 
 ### Performance Philosophy
 
-Mix uses a hybrid approach that balances functional programming principles with strategic mutation for performance:
+Mixon uses a hybrid approach that balances functional programming principles with strategic mutation for performance:
 
 - **Pure Functions**: Core business logic remains pure and side-effect free
 - **Controlled Mutation**: Performance-critical paths use in-place updates
@@ -31,7 +31,7 @@ Mix uses a hybrid approach that balances functional programming principles with 
 
 ### Result Types
 
-Mix uses discriminated unions for error handling:
+Mixon uses discriminated unions for error handling:
 
 ```typescript
 type Result<T, E = Error> = 
@@ -141,7 +141,7 @@ return match(response)
 
 ## Workflow Engine
 
-Mix includes a state machine workflow engine for modeling complex business processes:
+Mixon includes a state machine workflow engine for modeling complex business processes:
 
 ```typescript
 // Define workflow types
@@ -199,7 +199,7 @@ utils.assignTask(workflowInstance, task);
 
 ### Upgrading from Immutable API
 
-Previous versions of Mix used an immutable approach with functions like `withStatus`, `withHeader`, and `withResponse`. The new performance-optimized API uses controlled mutation with renamed functions:
+Previous versions of Mixon used an immutable approach with functions like `withStatus`, `withHeader`, and `withResponse`. The new performance-optimized API uses controlled mutation with renamed functions:
 
 ```typescript
 // Before (immutable)
@@ -249,7 +249,7 @@ if (success) {
 
 ### Optimization Strategies
 
-The optimized Mix architecture implements several performance enhancements:
+The optimized Mixon architecture implements several performance enhancements:
 
 1. **Middleware Optimization**: Fast-path dispatch with O(1) middleware lookup
 2. **Router Optimization**: Static route matching with Map-based lookup
@@ -259,7 +259,7 @@ The optimized Mix architecture implements several performance enhancements:
 
 ### Performance Benchmarks
 
-In high-throughput scenarios, the optimized Mix implementation demonstrates:
+In high-throughput scenarios, the optimized Mixon implementation demonstrates:
 
 - 30-40% lower memory usage
 - 15-25% faster response times
@@ -344,7 +344,7 @@ Deno.addSignalListener("SIGINT", () => {
 
 ## Type-Driven Development
 
-Mix encourages a type-driven approach to API development:
+Mixon encourages a type-driven approach to API development:
 
 1. Define your domain models with precise types
 2. Create validation schemas that align with your types

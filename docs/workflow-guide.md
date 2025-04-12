@@ -1,8 +1,8 @@
-# Mix Workflow Engine Guide
+# Mixon Workflow Engine Guide
 
 ## Introduction
 
-The Mix Workflow Engine provides a type-safe, performance-optimized state machine implementation for modeling complex business processes. It enables you to define explicit state transitions, track history, and manage tasks associated with state changes.
+The Mixon Workflow Engine provides a type-safe, performance-optimized state machine implementation for modeling complex business processes. It enables you to define explicit state transitions, track history, and manage tasks associated with state changes.
 
 ## Core Concepts
 

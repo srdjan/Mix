@@ -18,7 +18,7 @@ app.get("/", (ctx): void => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mix Framework Demo</title>
+  <title>Mixon Framework Demo</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 1000px; margin: 0 auto; }
@@ -78,7 +78,7 @@ app.get("/", (ctx): void => {
   <div class="cart-indicator" hx-get="/api/cart/count" hx-trigger="load, every 2s" hx-swap="innerHTML">Cart: 0</div>
 
   <header>
-    <h1>Mix Framework Demo</h1>
+    <h1>Mixon Framework Demo</h1>
     <p class="subtitle">Content Negotiation & HTMX Integration</p>
   </header>
 
@@ -118,7 +118,7 @@ app.get("/", (ctx): void => {
   </div>
 
   <footer>
-    <p>Built with <a href="https://github.com/yourusername/mix">Mix Framework</a> and <a href="https://htmx.org">HTMX</a>.</p>
+    <p>Built with <a href="https://github.com/yourusername/mix">Mixon Framework</a> and <a href="https://htmx.org">HTMX</a>.</p>
     <p>View the source code: <code>examples/workflow/workflow.ts</code></p>
   </footer>
 
@@ -137,7 +137,7 @@ app.get("/", (ctx): void => {
 </body>
 </html>`;
 
-  ctx.response = createResponse(ctx, { title: "Mix Framework Demo" }, {
+  ctx.response = createResponse(ctx, { title: "Mixon Framework Demo" }, {
     mediaType: MediaType.HTML,
     template,
     links: {
@@ -508,7 +508,7 @@ app.get("/api/products/sort/:method", (ctx): void => {
 app.get("/api/fragments/home", (ctx): void => {
   ctx.response = new Response(`
     <h2>About This Demo</h2>
-    <p>This example demonstrates Mix's content negotiation capabilities and HTMX integration. The same API endpoints can serve different formats (JSON, HAL, HTML) based on the client's Accept header.</p>
+    <p>This example demonstrates Mixon's content negotiation capabilities and HTMX integration. The same API endpoints can serve different formats (JSON, HAL, HTML) based on the client's Accept header.</p>
 
     <div class="feature-list">
       <h3>Key Features:</h3>
@@ -700,7 +700,7 @@ hx-target="#content"</code></pre>
 app.get("/api/fragments/api-formats", (ctx): void => {
   ctx.response = new Response(`
     <h2>API Formats</h2>
-    <p>Mix supports content negotiation, allowing the same endpoint to serve different formats based on the Accept header.</p>
+    <p>Mixon supports content negotiation, allowing the same endpoint to serve different formats based on the Accept header.</p>
 
     <div class="card-grid" style="margin-top: 1.5rem;">
       <div class="card">
@@ -743,7 +743,7 @@ app.get("/api/fragments/api-formats", (ctx): void => {
 app.get("/api/fragments/error-demo", (ctx): void => {
   ctx.response = new Response(`
     <h2>Error Handling</h2>
-    <p>Mix provides consistent error handling with content negotiation support.</p>
+    <p>Mixon provides consistent error handling with content negotiation support.</p>
 
     <div class="card" style="margin-top: 1.5rem;">
       <h3>Error Examples</h3>

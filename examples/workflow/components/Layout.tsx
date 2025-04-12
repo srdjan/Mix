@@ -9,7 +9,8 @@ export const Layout = ({ title, children }: LayoutProps) => (
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>{title}</title>
       <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-      <style>{`
+      <style>
+        {`
         body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 1000px; margin: 0 auto; }
         header { margin-bottom: 2rem; }
         h1 { color: #3498db; }
@@ -60,17 +61,25 @@ export const Layout = ({ title, children }: LayoutProps) => (
         
         /* Cart indicator */
         .cart-indicator { position: fixed; top: 1rem; right: 1rem; background: #3498db; color: white; padding: 0.5rem 1rem; border-radius: 4px; }
-      `}</style>
+      `}
+      </style>
     </head>
     <body>
       {/* Cart indicator with HTMX */}
-      <div class="cart-indicator" hx-get="/api/cart/count" hx-trigger="load, every 2s" hx-swap="innerHTML">
+      <div
+        class="cart-indicator"
+        hx-get="/api/cart/count"
+        hx-trigger="load, every 2s"
+        hx-swap="innerHTML"
+      >
         Cart: 0
       </div>
 
       <header>
-        <h1>Mix Framework Demo</h1>
-        <p class="subtitle">Content Negotiation & HTMX Integration with Nano JSX</p>
+        <h1>Mixon Framework Demo</h1>
+        <p class="subtitle">
+          Content Negotiation & HTMX Integration with Nano JSX
+        </p>
       </header>
 
       <div class="container">
@@ -79,28 +88,82 @@ export const Layout = ({ title, children }: LayoutProps) => (
           <div class="card">
             <h2>Navigation</h2>
             <ul class="nav-menu">
-              <li><a href="#" hx-get="/api/fragments/home" hx-target="#content" class="active">Home</a></li>
-              <li><a href="#" hx-get="/api/fragments/products" hx-target="#content">Products</a></li>
-              <li><a href="#" hx-get="/api/fragments/features" hx-target="#content">Features</a></li>
-              <li><a href="#" hx-get="/api/fragments/api-formats" hx-target="#content">API Formats</a></li>
-              <li><a href="#" hx-get="/api/fragments/error-demo" hx-target="#content">Error Demo</a></li>
+              <li>
+                <a
+                  href="#"
+                  hx-get="/api/fragments/home"
+                  hx-target="#content"
+                  class="active"
+                >
+                  Home
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  hx-get="/api/fragments/products"
+                  hx-target="#content"
+                >
+                  Products
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  hx-get="/api/fragments/features"
+                  hx-target="#content"
+                >
+                  Features
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  hx-get="/api/fragments/api-formats"
+                  hx-target="#content"
+                >
+                  API Formats
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  hx-get="/api/fragments/error-demo"
+                  hx-target="#content"
+                >
+                  Error Demo
+                </a>
+              </li>
             </ul>
           </div>
-          
+
           <div class="card">
             <h2>API Formats</h2>
-            <div class="btn-group" style="flex-direction: column; align-items: flex-start;">
-              <a href="/products/format/json" class="btn" target="_blank">JSON</a>
+            <div
+              class="btn-group"
+              style="flex-direction: column; align-items: flex-start;"
+            >
+              <a href="/products/format/json" class="btn" target="_blank">
+                JSON
+              </a>
               <a href="/products/format/hal" class="btn" target="_blank">HAL</a>
-              <a href="/products/format/html" class="btn" target="_blank">HTML</a>
+              <a href="/products/format/html" class="btn" target="_blank">
+                HTML
+              </a>
             </div>
           </div>
         </div>
-        
+
         {/* Main content area */}
         <div class="content-area">
           {/* Content will be swapped here */}
-          <div id="content" class="content-card" hx-get="/api/fragments/home" hx-trigger="load" hx-indicator="#spinner">
+          <div
+            id="content"
+            class="content-card"
+            hx-get="/api/fragments/home"
+            hx-trigger="load"
+            hx-indicator="#spinner"
+          >
             <div class="htmx-indicator">
               <div class="spinner"></div> Loading...
             </div>
@@ -110,12 +173,21 @@ export const Layout = ({ title, children }: LayoutProps) => (
       </div>
 
       <footer>
-        <p>Built with <a href="https://github.com/yourusername/mix">Mix Framework</a>, <a href="https://htmx.org">HTMX</a>, and <a href="https://nanojsx.io">Nano JSX</a>.</p>
-        <p>View the source code: <code>examples/workflow/workflow.tsx</code></p>
+        <p>
+          Built with{" "}
+          <a href="https://github.com/yourusername/mix">Mixon Framework</a>,
+          {" "}
+          <a href="https://htmx.org">HTMX</a>, and{" "}
+          <a href="https://nanojsx.io">Nano JSX</a>.
+        </p>
+        <p>
+          View the source code: <code>examples/workflow/workflow.tsx</code>
+        </p>
       </footer>
-      
+
       {/* HTMX event handling */}
-      <script>{`
+      <script>
+        {`
         document.body.addEventListener('click', function(e) {
           // Handle navigation menu active state
           if (e.target.matches('.nav-menu a')) {
@@ -125,7 +197,8 @@ export const Layout = ({ title, children }: LayoutProps) => (
             e.target.classList.add('active');
           }
         });
-      `}</script>
+      `}
+      </script>
     </body>
   </html>
 );

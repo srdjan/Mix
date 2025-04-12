@@ -2,13 +2,13 @@
 import { h, renderSSR } from "nano";
 import { App } from "../../lib/mix.ts";
 import {
-  Layout,
-  Home,
-  ProductList,
-  ProductDetail,
-  Features,
   ApiFormats,
-  ErrorDemo
+  ErrorDemo,
+  Features,
+  Home,
+  Layout,
+  ProductDetail,
+  ProductList,
 } from "./components/index.ts";
 
 const app = App();
@@ -17,21 +17,36 @@ const { MediaType, createResponse, handleError } = utils;
 
 // Sample data
 const products = [
-  { id: "1", name: "Laptop", price: 999.99, description: "Powerful laptop with 16GB RAM" },
-  { id: "2", name: "Smartphone", price: 699.99, description: "Latest model with 5G support" },
-  { id: "3", name: "Headphones", price: 199.99, description: "Noise-cancelling wireless headphones" }
+  {
+    id: "1",
+    name: "Laptop",
+    price: 999.99,
+    description: "Powerful laptop with 16GB RAM",
+  },
+  {
+    id: "2",
+    name: "Smartphone",
+    price: 699.99,
+    description: "Latest model with 5G support",
+  },
+  {
+    id: "3",
+    name: "Headphones",
+    price: 199.99,
+    description: "Noise-cancelling wireless headphones",
+  },
 ];
 
 // Root route - Home page with Nano JSX
 app.get("/", (ctx): void => {
   const html = renderSSR(
-    <Layout title="Mix Framework Demo">
+    <Layout title="Mixon Framework Demo">
       <Home />
-    </Layout>
+    </Layout>,
   );
 
   ctx.response = new Response(html, {
-    headers: { "Content-Type": "text/html" }
+    headers: { "Content-Type": "text/html" },
   });
 });
 
@@ -41,7 +56,7 @@ app.get("/", (ctx): void => {
 app.get("/api/fragments/home", (ctx): void => {
   const html = renderSSR(<Home />);
   ctx.response = new Response(html, {
-    headers: { "Content-Type": "text/html" }
+    headers: { "Content-Type": "text/html" },
   });
 });
 
@@ -49,7 +64,7 @@ app.get("/api/fragments/home", (ctx): void => {
 app.get("/api/fragments/products", (ctx): void => {
   const html = renderSSR(<ProductList products={products} />);
   ctx.response = new Response(html, {
-    headers: { "Content-Type": "text/html" }
+    headers: { "Content-Type": "text/html" },
   });
 });
 
@@ -58,25 +73,25 @@ app.get<{ id: string }>("/api/fragments/product-detail/:id", (ctx): void => {
   if (!ctx.validated.params.ok) {
     ctx.response = new Response("<div class='card'>Invalid product ID</div>", {
       status: 400,
-      headers: { "Content-Type": "text/html" }
+      headers: { "Content-Type": "text/html" },
     });
     return;
   }
 
   const productId = ctx.validated.params.value.id;
-  const product = products.find(p => p.id === productId);
+  const product = products.find((p) => p.id === productId);
 
   if (!product) {
     ctx.response = new Response("<div class='card'>Product not found</div>", {
       status: 404,
-      headers: { "Content-Type": "text/html" }
+      headers: { "Content-Type": "text/html" },
     });
     return;
   }
 
   const html = renderSSR(<ProductDetail product={product} />);
   ctx.response = new Response(html, {
-    headers: { "Content-Type": "text/html" }
+    headers: { "Content-Type": "text/html" },
   });
 });
 
@@ -84,7 +99,7 @@ app.get<{ id: string }>("/api/fragments/product-detail/:id", (ctx): void => {
 app.get("/api/fragments/features", (ctx): void => {
   const html = renderSSR(<Features />);
   ctx.response = new Response(html, {
-    headers: { "Content-Type": "text/html" }
+    headers: { "Content-Type": "text/html" },
   });
 });
 
@@ -92,7 +107,7 @@ app.get("/api/fragments/features", (ctx): void => {
 app.get("/api/fragments/api-formats", (ctx): void => {
   const html = renderSSR(<ApiFormats product={products[0]} />);
   ctx.response = new Response(html, {
-    headers: { "Content-Type": "text/html" }
+    headers: { "Content-Type": "text/html" },
   });
 });
 
@@ -100,7 +115,7 @@ app.get("/api/fragments/api-formats", (ctx): void => {
 app.get("/api/fragments/error-demo", (ctx): void => {
   const html = renderSSR(<ErrorDemo />);
   ctx.response = new Response(html, {
-    headers: { "Content-Type": "text/html" }
+    headers: { "Content-Type": "text/html" },
   });
 });
 
@@ -109,12 +124,12 @@ app.get("/products", (ctx): void => {
   // Response format determined by Accept header
   ctx.response = createResponse(ctx, products, {
     links: {
-      self: "/products"
+      self: "/products",
     },
     meta: {
       count: products.length,
-      version: "1.0"
-    }
+      version: "1.0",
+    },
   });
 });
 
@@ -126,7 +141,7 @@ app.get<{ id: string }>("/products/:id", (ctx): void => {
   }
 
   const productId = ctx.validated.params.value.id;
-  const product = products.find(p => p.id === productId);
+  const product = products.find((p) => p.id === productId);
 
   if (!product) {
     handleError(ctx, 404, "Product not found");
@@ -138,11 +153,11 @@ app.get<{ id: string }>("/products/:id", (ctx): void => {
     const html = renderSSR(
       <Layout title={`${product.name} - Product Details`}>
         <ProductDetail product={product} />
-      </Layout>
+      </Layout>,
     );
 
     ctx.response = new Response(html, {
-      headers: { "Content-Type": "text/html" }
+      headers: { "Content-Type": "text/html" },
     });
     return;
   }
@@ -151,8 +166,8 @@ app.get<{ id: string }>("/products/:id", (ctx): void => {
   ctx.response = createResponse(ctx, product, {
     links: {
       self: `/products/${product.id}`,
-      collection: "/products"
-    }
+      collection: "/products",
+    },
   });
 });
 
@@ -161,8 +176,8 @@ app.get("/products/format/json", (ctx): void => {
   ctx.response = createResponse(ctx, products, {
     mediaType: MediaType.JSON, // Force JSON format
     links: {
-      self: "/products/format/json"
-    }
+      self: "/products/format/json",
+    },
   });
 });
 
@@ -171,8 +186,8 @@ app.get("/products/format/hal", (ctx): void => {
     mediaType: MediaType.HAL, // Force HAL format
     links: {
       self: { href: "/products/format/hal" },
-      collection: { href: "/products" }
-    }
+      collection: { href: "/products" },
+    },
   });
 });
 
@@ -180,11 +195,11 @@ app.get("/products/format/html", (ctx): void => {
   const html = renderSSR(
     <Layout title="Products Catalog">
       <ProductList products={products} />
-    </Layout>
+    </Layout>,
   );
 
   ctx.response = new Response(html, {
-    headers: { "Content-Type": "text/html" }
+    headers: { "Content-Type": "text/html" },
   });
 });
 
@@ -202,7 +217,7 @@ app.get("/api/increment", (ctx): void => {
   // Return just the HTML for the input element
   ctx.response = new Response(
     `<input type="number" id="quantity" name="quantity" value="${newValue}" min="1" max="10">`,
-    { headers: { "Content-Type": "text/html" } }
+    { headers: { "Content-Type": "text/html" } },
   );
 });
 
@@ -218,7 +233,7 @@ app.get("/api/decrement", (ctx): void => {
   // Return just the HTML for the input element
   ctx.response = new Response(
     `<input type="number" id="quantity" name="quantity" value="${newValue}" min="1" max="10">`,
-    { headers: { "Content-Type": "text/html" } }
+    { headers: { "Content-Type": "text/html" } },
   );
 });
 
@@ -231,7 +246,7 @@ app.post("/api/cart/add", (ctx): void => {
       Item added to cart successfully!
       <button type="button" hx-get="/api/cart/hide-notification" hx-target="#notification" hx-swap="outerHTML" style="margin-left: 10px; background: none; border: none; color: white; cursor: pointer;">×</button>
     </div>`,
-    { headers: { "Content-Type": "text/html" } }
+    { headers: { "Content-Type": "text/html" } },
   );
 });
 
@@ -239,7 +254,7 @@ app.post("/api/cart/add", (ctx): void => {
 app.get("/api/cart/hide-notification", (ctx): void => {
   ctx.response = new Response(
     `<div id="notification" class="cart-notification"></div>`,
-    { headers: { "Content-Type": "text/html" } }
+    { headers: { "Content-Type": "text/html" } },
   );
 });
 
@@ -249,7 +264,7 @@ app.get("/api/cart/count", (ctx): void => {
   const count = Math.floor(Math.random() * 5); // Simulate random cart count for demo
   ctx.response = new Response(
     `Cart: ${count}`,
-    { headers: { "Content-Type": "text/html" } }
+    { headers: { "Content-Type": "text/html" } },
   );
 });
 
@@ -263,19 +278,21 @@ app.get<{ id: string }>("/api/products/related/:id", (ctx): void => {
   const productId = ctx.validated.params.value.id;
   // Filter out the current product and get 2 random products
   const relatedProducts = products
-    .filter(p => p.id !== productId)
+    .filter((p) => p.id !== productId)
     .sort(() => Math.random() - 0.5)
     .slice(0, 2);
 
   ctx.response = new Response(
     `<ul>
-      ${relatedProducts.map(p => `
+      ${
+      relatedProducts.map((p) => `
         <li>
           <a href="/products/${p.id}" hx-boost="true">${p.name} - $${p.price}</a>
         </li>
-      `).join('')}
+      `).join("")
+    }
     </ul>`,
-    { headers: { "Content-Type": "text/html" } }
+    { headers: { "Content-Type": "text/html" } },
   );
 });
 
@@ -286,17 +303,17 @@ app.get("/api/products/search", (ctx): void => {
     query = ctx.validated.query.value.query.toLowerCase();
   }
 
-  const filteredProducts = query ?
-    products.filter(p =>
+  const filteredProducts = query
+    ? products.filter((p) =>
       p.name.toLowerCase().includes(query) ||
       p.description.toLowerCase().includes(query)
-    ) :
-    products;
+    )
+    : products;
 
   // Use Nano JSX to render the product cards
   const html = renderSSR(
     <div class="product-grid">
-      {filteredProducts.map(product => (
+      {filteredProducts.map((product) => (
         <div class="product-card">
           <h3 class="product-name">{product.name}</h3>
           <div class="product-price">${product.price}</div>
@@ -311,10 +328,12 @@ app.get("/api/products/search", (ctx): void => {
           </button>
         </div>
       ))}
-    </div>
+    </div>,
   );
 
-  ctx.response = new Response(html, { headers: { "Content-Type": "text/html" } });
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" },
+  });
 });
 
 // Sort products
@@ -342,7 +361,7 @@ app.get<{ method: string }>("/api/products/sort/:method", (ctx): void => {
   // Use Nano JSX to render the product cards
   const html = renderSSR(
     <div class="product-grid">
-      {sortedProducts.map(product => (
+      {sortedProducts.map((product) => (
         <div class="product-card">
           <h3 class="product-name">{product.name}</h3>
           <div class="product-price">${product.price}</div>
@@ -357,10 +376,12 @@ app.get<{ method: string }>("/api/products/sort/:method", (ctx): void => {
           </button>
         </div>
       ))}
-    </div>
+    </div>,
   );
 
-  ctx.response = new Response(html, { headers: { "Content-Type": "text/html" } });
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" },
+  });
 });
 
 // Click counter demo endpoint
@@ -369,13 +390,14 @@ app.post("/api/demo/click-counter", (ctx): void => {
   const count = Math.floor(Math.random() * 100) + 1;
 
   ctx.response = new Response(`Click count: ${count}`, {
-    headers: { "Content-Type": "text/html" }
+    headers: { "Content-Type": "text/html" },
   });
 });
 
 // Validation error demo endpoint
 app.get("/api/demo/validation-error", (ctx): void => {
-  ctx.response = new Response(`
+  ctx.response = new Response(
+    `
     <div style="padding: 1rem; background: #ffebee; border-left: 4px solid #f44336; color: #b71c1c;">
       <h3 style="margin-top: 0;">Validation Error</h3>
       <p>The following fields have validation errors:</p>
@@ -385,7 +407,9 @@ app.get("/api/demo/validation-error", (ctx): void => {
         <li>password: Must be at least 8 characters</li>
       </ul>
     </div>
-  `, { headers: { "Content-Type": "text/html" } });
+  `,
+    { headers: { "Content-Type": "text/html" } },
+  );
 });
 
 // Error example with content negotiation
@@ -393,7 +417,7 @@ app.get("/error", (ctx): void => {
   // Error response format determined by Accept header
   handleError(ctx, 500, "Example error", {
     code: "EXAMPLE_ERROR",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 

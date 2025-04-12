@@ -383,7 +383,7 @@ export const renderHtml = (data: unknown, template?: string): string => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mix Response</title>
+  <title>Mixon Response</title>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 800px; margin: 0 auto; }
     pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow: auto; }

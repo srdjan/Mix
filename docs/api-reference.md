@@ -1,8 +1,8 @@
-# Mix API Reference
+# Mixon API Reference
 
 ## Core Concepts
 
-Mix is a minimalist, performance-optimized TypeScript framework for building APIs and workflow engines in Deno. It embraces strategic mutation for performance-critical paths while maintaining functional principles for business logic.
+Mixon is a minimalist, performance-optimized TypeScript framework for building APIs and workflow engines in Deno. It embraces strategic mutation for performance-critical paths while maintaining functional principles for business logic.
 
 ### Key Design Principles
 
@@ -182,7 +182,7 @@ const links = utils.createLinks('resources', resourceId);
 
 ## Validation
 
-Mix uses ArkType for runtime validation with perfect TypeScript inference.
+Mixon uses ArkType for runtime validation with perfect TypeScript inference.
 
 ### Schema Definition
 
@@ -234,7 +234,7 @@ return utils.handleResult(validation, ctx,
 
 ## Pattern Matching
 
-Mix provides powerful pattern matching for type-safe conditional logic.
+Mixon provides powerful pattern matching for type-safe conditional logic.
 
 ```typescript
 import { match } from "./mod.ts";
@@ -262,7 +262,7 @@ return match(result)
 
 ## Workflow Engine
 
-Mix includes a performance-optimized state machine for modeling business processes.
+Mixon includes a performance-optimized state machine for modeling business processes.
 
 ### Workflow Definition
 
@@ -338,7 +338,7 @@ orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
 
 ## Performance Utilities
 
-Mix provides tools for monitoring and optimizing performance.
+Mixon provides tools for monitoring and optimizing performance.
 
 ### Memory Monitoring
 
@@ -377,7 +377,7 @@ performance.measure("operation", "startOperation", "endOperation");
 
 ## Error Handling
 
-Mix uses Result types for explicit error handling.
+Mixon uses Result types for explicit error handling.
 
 ```typescript
 // Error handling middleware
@@ -437,7 +437,7 @@ app.post("/orders", async (ctx) => {
 
 ## Streaming and Binary Data
 
-Mix supports efficient handling of streams and binary data.
+Mixon supports efficient handling of streams and binary data.
 
 ```typescript
 // Streaming response

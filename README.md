@@ -1,4 +1,4 @@
-# Mix 🚀
+# Mixon 🚀
 
 **Type-Safe API & Workflow Microframework for Deno**
 *Build Robust REST APIs and Stateful Workflows with Confidence*
@@ -193,7 +193,7 @@ workflow.createHandler("/articles/:id/publish", (ctx): void => {
 ## Documentation 📚
 
 Explore full capabilities at:
-[📖 Mix Documentation](https://Mixframework.org/docs)
+[📖 Mixon Documentation](https://Mixframework.org/docs)
 
 | Section               | Description                          |
 |-----------------------|--------------------------------------|

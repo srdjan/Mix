@@ -1,14 +1,14 @@
-# Mix Memory Optimization Guide
+# Mixon Memory Optimization Guide
 
 ## Introduction
 
-Memory optimization is crucial for high-throughput Mix applications. This guide outlines strategies for minimizing memory usage and optimizing performance in production environments.
+Memory optimization is crucial for high-throughput Mixon applications. This guide outlines strategies for minimizing memory usage and optimizing performance in production environments.
 
 ## Memory Management Fundamentals
 
 ### V8 Memory Architecture
 
-Mix leverages the V8 JavaScript engine which uses generational garbage collection:
+Mixon leverages the V8 JavaScript engine which uses generational garbage collection:
 
 - **Young Generation (New Space)**: Short-lived objects
 - **Old Generation (Old Space)**: Long-lived objects

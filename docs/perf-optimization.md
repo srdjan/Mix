@@ -2,13 +2,13 @@
 
 ## Overview
 
-Mix's performance-optimized architecture balances functional programming principles with strategic mutation to maximize throughput while maintaining type safety. This guide explores performance optimization techniques for building high-scale APIs with Mix.
+Mixon's performance-optimized architecture balances functional programming principles with strategic mutation to maximize throughput while maintaining type safety. This guide explores performance optimization techniques for building high-scale APIs with Mixon.
 
 ## Core Performance Principles
 
 ### 1. Strategic Mutation
 
-Mix leverages controlled mutation in performance-critical paths while maintaining immutability for business logic:
+Mixon leverages controlled mutation in performance-critical paths while maintaining immutability for business logic:
 
 ```typescript
 // Performance-critical paths use direct mutation
@@ -22,7 +22,7 @@ const calculateTotal = (items: LineItem[]): number =>
 
 ### 2. Memory Management
 
-Proper memory management is critical for high-throughput applications. Mix implements several strategies to minimize GC pressure:
+Proper memory management is critical for high-throughput applications. Mixon implements several strategies to minimize GC pressure:
 
 - **Object Pooling**: Reuse objects instead of creating new ones
 - **Reduced Allocation**: Minimize temporary object creation in hot paths
@@ -30,7 +30,7 @@ Proper memory management is critical for high-throughput applications. Mix imple
 
 ### 3. V8 Optimization Hints
 
-Mix is designed to work with V8's optimization capabilities:
+Mixon is designed to work with V8's optimization capabilities:
 
 - **Monomorphic Functions**: Design handlers to work with consistent types
 - **Avoid Property Access Changes**: Define object shapes consistently
@@ -55,7 +55,7 @@ console.log(Deno.memoryUsage());
 
 ## Server Configuration Options
 
-Mix leverages Deno's built-in HTTP server capabilities with additional optimizations:
+Mixon leverages Deno's built-in HTTP server capabilities with additional optimizations:
 
 ```typescript
 app.listen({
@@ -413,4 +413,4 @@ Analyze performance results and optimize the critical paths in your application.
 
 ## Conclusion
 
-By applying these performance optimization techniques, your Mix applications can achieve significant throughput improvements while maintaining the type safety and developer experience benefits of the framework.
+By applying these performance optimization techniques, your Mixon applications can achieve significant throughput improvements while maintaining the type safety and developer experience benefits of the framework.

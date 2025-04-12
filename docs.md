@@ -1,6 +1,6 @@
-# Mix Framework Tutorial: Building APIs & Workflows
+# Mixon Framework Tutorial: Building APIs & Workflows
 
-This tutorial covers using Mix for two key scenarios:  
+This tutorial covers using Mixon for two key scenarios:  
 **1. REST API Development**  
 **2. Workflow Management Systems**
 
@@ -242,13 +242,13 @@ curl -X POST http://localhost:3000/tickets/123/transitions \
 
 ## Conclusion
 
-**Use Mix for APIs when:**
+**Use Mixon for APIs when:**
 
 - Building RESTful services
 - Need HATEOAS compliance
 - Managing resource state
 
-**Use Mix Workflows when:**
+**Use Mixon Workflows when:**
 
 - Modeling business processes
 - Managing state transitions

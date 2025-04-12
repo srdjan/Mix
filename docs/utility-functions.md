@@ -1,10 +1,10 @@
-# Mix Utility Functions
+# Mixon Utility Functions
 
 ## Overview
 
-Mix provides a set of utility functions to simplify common tasks in API development. These functions are designed to be composable, type-safe, and performance-optimized. They help maintain consistency across your application and reduce boilerplate code.
+Mixon provides a set of utility functions to simplify common tasks in API development. These functions are designed to be composable, type-safe, and performance-optimized. They help maintain consistency across your application and reduce boilerplate code.
 
-The utility functions now use pattern matching for more elegant and type-safe implementations, leveraging Mix's custom `match` function, which is implemented in the framework rather than imported from ArkType.
+The utility functions now use pattern matching for more elegant and type-safe implementations, leveraging Mixon's custom `match` function, which is implemented in the framework rather than imported from ArkType.
 
 ## Core Utility Functions
 
@@ -325,7 +325,7 @@ export const renderHtml = (data: unknown, template?: string): string => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mix Response</title>
+  <title>Mixon Response</title>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 800px; margin: 0 auto; }
     pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow: auto; }
@@ -435,7 +435,7 @@ const mediaType = utils.parseAcceptHeader('*/*');
 
 ## Content Negotiation
 
-Mix supports content negotiation to serve responses in different formats based on the client's Accept header:
+Mixon supports content negotiation to serve responses in different formats based on the client's Accept header:
 
 - **application/json**: Standard JSON responses
 - **application/hal+json**: HAL format for hypermedia APIs
@@ -445,7 +445,7 @@ The framework automatically determines the preferred format from the Accept head
 
 ## Pattern Matching
 
-The utility functions use Mix's custom `match` function for pattern matching, which provides several benefits:
+The utility functions use Mixon's custom `match` function for pattern matching, which provides several benefits:
 
 1. **Type Safety**: Pattern matching with exhaustiveness checking ensures all cases are handled
 2. **Readability**: Clear, declarative code that's easier to understand
