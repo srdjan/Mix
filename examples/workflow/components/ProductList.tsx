@@ -5,12 +5,16 @@ import { ProductCard } from "./ProductCard.tsx";
 
 export const ProductList = ({ products }: ProductListProps) => (
   <Fragment>
+    {/* Hidden spinner for HTMX indicators */}
+    <div id="spinner" class="htmx-indicator" style="display: none;">
+      <div class="spinner"></div> Loading...
+    </div>
     <h2>Product Catalog</h2>
     <p>Browse our product catalog with search and sorting capabilities.</p>
-    
+
     {/* Search with HTMX */}
     <div style="margin-bottom: 1.5rem;">
-      <input 
+      <input
         type="text"
         style="padding: 0.5rem; width: 100%; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 1rem;"
         placeholder="Search products..."
@@ -19,10 +23,10 @@ export const ProductList = ({ products }: ProductListProps) => (
         hx-target="#product-list"
         name="query"
       />
-      
+
       {/* Sort options with HTMX */}
       <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-        <button 
+        <button
           type="button"
           class="btn"
           hx-get="/api/products/sort/name"
@@ -30,7 +34,7 @@ export const ProductList = ({ products }: ProductListProps) => (
         >
           Sort by Name
         </button>
-        <button 
+        <button
           type="button"
           class="btn"
           hx-get="/api/products/sort/price-asc"
@@ -38,7 +42,7 @@ export const ProductList = ({ products }: ProductListProps) => (
         >
           Price (Low to High)
         </button>
-        <button 
+        <button
           type="button"
           class="btn"
           hx-get="/api/products/sort/price-desc"
@@ -48,7 +52,7 @@ export const ProductList = ({ products }: ProductListProps) => (
         </button>
       </div>
     </div>
-    
+
     {/* Product list with HTMX */}
     <div id="product-list" class="product-grid">
       {products.map(product => (

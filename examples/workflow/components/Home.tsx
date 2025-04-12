@@ -3,6 +3,10 @@ import { Fragment, h } from "nano";
 
 export const Home = () => (
   <Fragment>
+    {/* Hidden spinner for HTMX indicators */}
+    <div id="spinner" class="htmx-indicator" style="display: none;">
+      <div class="spinner"></div> Loading...
+    </div>
     <h2>About This Demo</h2>
     <p>
       This example demonstrates Mixon's content negotiation capabilities and

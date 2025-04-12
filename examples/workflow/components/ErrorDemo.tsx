@@ -3,6 +3,10 @@ import { Fragment, h } from "nano";
 
 export const ErrorDemo = () => (
   <Fragment>
+    {/* Hidden spinner for HTMX indicators */}
+    <div id="spinner" class="htmx-indicator" style="display: none;">
+      <div class="spinner"></div> Loading...
+    </div>
     <h2>Error Handling</h2>
     <p>
       Mixon provides consistent error handling with content negotiation support.
