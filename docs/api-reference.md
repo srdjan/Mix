@@ -49,7 +49,7 @@ type Handler<T extends Context = Context> = (ctx: T) => Promise<void> | void;
 ### Initialization
 
 ```typescript
-import { App } from "./mod.ts";
+import { App } from "jsr:@srdjan/mixon";
 
 const app = App();
 const { utils } = app;
@@ -187,7 +187,7 @@ Mixon uses ArkType for runtime validation with perfect TypeScript inference.
 ### Schema Definition
 
 ```typescript
-import { type, scope } from "./mod.ts";
+import { type, scope } from "jsr:@srdjan/mixon";
 
 // Simple validation schema
 const userSchema = type({
@@ -237,7 +237,7 @@ return utils.handleResult(validation, ctx,
 Mixon provides powerful pattern matching for type-safe conditional logic.
 
 ```typescript
-import { match } from "./mod.ts";
+import { match } from "jsr:@srdjan/mixon";
 
 // Simple pattern matching
 return match(statusCode)
@@ -498,7 +498,7 @@ export const registerRoutes = (app) => {
 };
 
 // server.ts
-import { App } from "./mod.ts";
+import { App } from "jsr:@srdjan/mixon";
 import { registerRoutes } from "./routes.ts";
 
 const app = App();

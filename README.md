@@ -61,10 +61,10 @@ The simplest way to use Mixon is to import it directly from your project:
 
 ```typescript
 // Import from local path
-import { App } from "./lib/Mixon.ts";
+import { App } from "jsr:@srdjan/mixon";
 
 // Or import specific utilities
-import { App, type, match } from "./lib/Mixon.ts";
+import { App, type, match } from "jsr:@srdjan/mixon";
 ```
 
 ### Import from JSR (Recommended)
@@ -97,7 +97,7 @@ To get started with the examples and have the full source code:
 
 ```bash
 # Clone the repository
-git clone https://github.com/srdjan/Mixon.git
+git clone https://github.com/srdjan/mixon.git
 cd Mixon
 
 # Run an example
@@ -127,7 +127,7 @@ Create a `deno.json` file in your project root with the following permissions:
 Create your main application file (e.g., `main.ts`):
 
 ```typescript
-import { App } from "./lib/Mixon.ts";
+import { App } from "jsr:@srdjan/mixon";
 
 const app = App();
 const { utils } = app;
@@ -154,7 +154,7 @@ After installing Mixon, you can start using it in your project:
 
 ```typescript
 // Import Mixon
-import { App, type, match } from "./lib/Mixon.ts";
+import { App, type, match } from "jsr:@srdjan/mixon";
 // or from Deno.land
 // import { App, type, match } from "https://deno.land/x/mixon/mod.ts";
 

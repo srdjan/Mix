@@ -238,7 +238,7 @@ orderWorkflow.createHandler("/orders/:id/transitions", (ctx) => {
 Use pattern matching for exhaustive state handling:
 
 ```typescript
-import { match } from "./mod.ts";
+import { match } from "jsr:@srdjan/mixon";
 
 const getOrderActions = (instance: WorkflowInstance): string[] =>
   match(instance.currentState)
@@ -583,7 +583,7 @@ const updateOrderState = async (
 
 ```typescript
 // order-workflow.ts
-import { App, type, match } from "./mod.ts";
+import { App, type, match } from "jsr:@srdjan/mixon";
 
 // Define workflow types
 type OrderState = "Draft" | "Submitted" | "Processing" | "Shipped" | "Delivered" | "Cancelled";

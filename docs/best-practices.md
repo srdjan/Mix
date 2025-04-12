@@ -217,7 +217,7 @@ const conditionalAuth = (ctx, next) => {
 Use pattern matching for exhaustive type checking:
 
 ```typescript
-import { match } from "./mod.ts";
+import { match } from "jsr:@srdjan/mixon";
 
 type UserState =
   | { status: "guest" }
@@ -491,7 +491,7 @@ Mixon provides utility functions for consistent error handling and response crea
 
 ```typescript
 // Import from lib/Mixon.ts
-import { App } from "./mod.ts";
+import { App } from "jsr:@srdjan/mixon";
 const app = App();
 const { utils } = app;
 const { handleError, createResponse, createLinks } = utils;
@@ -770,7 +770,7 @@ Implement proper cleanup on shutdown:
 
 ```typescript
 // app.ts
-import { App } from "./mod.ts";
+import { App } from "jsr:@srdjan/mixon";
 
 const app = App();
 
