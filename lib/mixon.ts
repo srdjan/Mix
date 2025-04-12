@@ -374,27 +374,10 @@ export const handleError = (ctx: Context, status: number, message: string, detai
 // HTML template rendering function
 export const renderHtml = (data: unknown, template?: string): string => {
   if (!template) {
-    // Default template for automatic rendering
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mixon Response</title>
-  <style>
-    body { font-family: system-ui, sans-serif; line-height: 1.5; padding: 2rem; max-width: 800px; margin: 0 auto; }
-    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow: auto; }
-    a { color: #0074d9; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .links { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee; }
-    .meta { color: #666; font-size: 0.9rem; margin-top: 1rem; }
-  </style>
-</head>
-<body>
-  <h1>Response Data</h1>
-  <pre>${JSON.stringify(data, null, 2)}</pre>
-`;
-
+    const html = `<fragment>
+                    <h1>Response Data</h1>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                  </fragment>`;
     return html;
   }
 
