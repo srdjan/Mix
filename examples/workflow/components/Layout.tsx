@@ -175,7 +175,7 @@ export const Layout = ({ title, children }: LayoutProps) => (
       <footer>
         <p>
           Built with{" "}
-          <a href="https://github.com/yourusername/mix">Mixon Framework</a>,
+          <a href="https://github.com/yourusername/Mixon">Mixon Framework</a>,
           {" "}
           <a href="https://htmx.org">HTMX</a>, and{" "}
           <a href="https://nanojsx.io">Nano JSX</a>.

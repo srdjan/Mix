@@ -51,7 +51,7 @@ app.listen(3000);
 
 ```typescript
 // Import directly from Deno.land
-import { App, type, match } from "./lib/mix.ts";
+import { App, type, match } from "./lib/Mixon.ts";
 
 // Access utility functions
 const app = App();

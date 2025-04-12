@@ -490,8 +490,8 @@ orderWorkflow.createHandler("/orders/:id/events", async (ctx) => {
 Mixon provides utility functions for consistent error handling and response creation:
 
 ```typescript
-// Import from lib/mix.ts
-import { App } from "./lib/mix.ts";
+// Import from lib/Mixon.ts
+import { App } from "./lib/Mixon.ts";
 const app = App();
 const { utils } = app;
 const { handleError, createResponse, createLinks } = utils;

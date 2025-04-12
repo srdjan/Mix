@@ -1,4 +1,4 @@
-import { App } from "../../lib/mix.ts";
+import { App } from "../../lib/Mixon.ts";
 
 const app = App();
 const { utils } = app;
@@ -118,7 +118,7 @@ app.get("/", (ctx): void => {
   </div>
 
   <footer>
-    <p>Built with <a href="https://github.com/yourusername/mix">Mixon Framework</a> and <a href="https://htmx.org">HTMX</a>.</p>
+    <p>Built with <a href="https://github.com/yourusername/Mixon">Mixon Framework</a> and <a href="https://htmx.org">HTMX</a>.</p>
     <p>View the source code: <code>examples/workflow/workflow.ts</code></p>
   </footer>
 
