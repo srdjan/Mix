@@ -3,7 +3,7 @@
 **Type-Safe API & Workflow Microframework for Deno**
 *Build Robust REST APIs and Stateful Workflows with Confidence*
 
-*Powered by [Deno](https://deno.land) and [ArkType](https://arktype.io)*
+*Powered by [Deno](https://deno.land), [HTMX](https://htmx.org) and [ArkType](https://arktype.io)*
 
 [![Deno Version](https://img.shields.io/badge/deno-2.2-blue?logo=deno)](https://deno.land)
 [![ArkType Version](https://img.shields.io/badge/arktype-2.1-orange?logo=deno)](https://arktype.io/)
