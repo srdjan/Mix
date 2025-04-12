@@ -67,6 +67,18 @@ import { App } from "./lib/Mixon.ts";
 import { App, type, match } from "./lib/Mixon.ts";
 ```
 
+### Import from JSR (Recommended)
+
+The recommended way to use Mixon is to import it from the Deno JSR:
+
+```typescript
+// Import the latest version
+import { App } from "jsr:@srdjan/mixon";
+
+// Or import specific utilities
+import { App, type, match } from "jsr:@srdjan/mixon";
+```
+
 ### Import from Deno.land
 
 You can also import Mixon directly from Deno.land (once published):

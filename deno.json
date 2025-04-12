@@ -1,8 +1,14 @@
 {
+  "name": "@srdjan/mixon",
+  "version": "1.0.0",
+  "exports": "./mod.ts",
+  "description": "Type-Safe API & Workflow Microframework for Deno",
+  "readme": "./JSR.md",
   "tasks": {
     "dev": "deno run --watch main.ts",
     "workflow": "deno run --allow-net --allow-read examples/workflow/workflow.tsx",
-    "workflow:watch": "deno run --allow-net --allow-read --watch examples/workflow/workflow.tsx"
+    "workflow:watch": "deno run --allow-net --allow-read --watch examples/workflow/workflow.tsx",
+    "publish": "deno publish"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
@@ -13,5 +19,14 @@
     "jsx": "react",
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment"
+  },
+  "publish": {
+    "exclude": [
+      "examples/",
+      "docs/",
+      ".git/",
+      ".github/",
+      "main.ts"
+    ]
   }
 }
