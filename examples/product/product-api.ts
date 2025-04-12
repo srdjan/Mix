@@ -1,4 +1,4 @@
-import { App } from "../../lib/Mixon.ts";
+import { App } from "../../lib/server/mixon.ts";
 
 type ProductCategory = 'electronics' | 'books' | 'clothing';
 

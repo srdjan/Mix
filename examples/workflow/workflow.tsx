@@ -1,6 +1,6 @@
 /** @jsx h */
 import { h, renderSSR } from "nano";
-import { App } from "../../lib/Mixon.ts";
+import { App } from "../../lib/server/mixon.ts";
 import { Layout } from "../../lib/components/index.ts";
 import {
   ApiFormats,

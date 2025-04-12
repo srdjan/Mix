@@ -1,3 +1,3 @@
 // Export all components
-export * from "./Layout.tsx";
+export * from "./layout.tsx";
 

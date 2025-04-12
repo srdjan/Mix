@@ -491,7 +491,7 @@ Mixon provides utility functions for consistent error handling and response crea
 
 ```typescript
 // Import from lib/Mixon.ts
-import { App } from "./lib/Mixon.ts";
+import { App } from "./mod.ts";
 const app = App();
 const { utils } = app;
 const { handleError, createResponse, createLinks } = utils;
