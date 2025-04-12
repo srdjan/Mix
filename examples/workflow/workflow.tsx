@@ -242,9 +242,9 @@ app.post("/api/cart/add", (ctx): void => {
   // In a real app, you would add to a session-based cart
   // Here we just return a success message
   ctx.response = new Response(
-    `<div id="notification" class="cart-notification" style="display: block;">
+    `<div id="notification" class="cart-notification active">
       Item added to cart successfully!
-      <button type="button" hx-get="/api/cart/hide-notification" hx-target="#notification" hx-swap="outerHTML" style="margin-left: 10px; background: none; border: none; color: white; cursor: pointer;">×</button>
+      <button type="button" hx-get="/api/cart/hide-notification" hx-target="#notification" hx-swap="outerHTML" class="close-btn">×</button>
     </div>`,
     { headers: { "Content-Type": "text/html" } },
   );

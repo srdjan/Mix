@@ -5,13 +5,13 @@ import { FeatureCard } from "./FeatureCard.tsx";
 export const Features = () => (
   <Fragment>
     {/* Hidden spinner for HTMX indicators */}
-    <div id="spinner" class="htmx-indicator" style="display: none;">
+    <div id="spinner" class="htmx-indicator">
       <div class="spinner"></div> Loading...
     </div>
     <h2>HTMX Features</h2>
     <p>This demo showcases several HTMX features that enable rich interactivity without writing JavaScript:</p>
 
-    <div class="card-grid" style="margin-top: 1.5rem;">
+    <div class="card-grid margin-top-lg">
       <FeatureCard
         title="Content Swapping"
         description="The navigation menu uses hx-target and hx-get to swap content in the main area."
@@ -46,7 +46,7 @@ export const Features = () => (
       />
     </div>
 
-    <div style="margin-top: 2rem;">
+    <div class="margin-top-xl">
       <h3>Try It Out</h3>
       <p>Click the buttons below to see HTMX in action:</p>
 
@@ -57,7 +57,7 @@ export const Features = () => (
         hx-target="#click-counter"
       >Click Me</button>
 
-      <div id="click-counter" style="margin-top: 1rem;">Click count: 0</div>
+      <div id="click-counter" class="margin-top">Click count: 0</div>
     </div>
   </Fragment>
 );

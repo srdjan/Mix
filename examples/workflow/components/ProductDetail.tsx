@@ -5,10 +5,10 @@ import { ProductDetailProps } from "./types.ts";
 export const ProductDetail = ({ product }: ProductDetailProps) => (
   <div>
     {/* Hidden spinner for HTMX indicators */}
-    <div id="spinner" class="htmx-indicator" style="display: none;">
+    <div id="spinner" class="htmx-indicator">
       <div class="spinner"></div> Loading...
     </div>
-    <div style="margin-bottom: 1rem;">
+    <div class="margin-bottom">
       <button
         type="button"
         class="btn"
@@ -20,14 +20,14 @@ export const ProductDetail = ({ product }: ProductDetailProps) => (
     </div>
 
     <h2>{product.name}</h2>
-    <div class="product-price" style="font-size: 1.5rem;">${product.price}</div>
-    <div style="margin: 1rem 0;">{product.description}</div>
+    <div class="product-price product-price-lg">${product.price}</div>
+    <div class="margin-bottom margin-top">{product.description}</div>
 
     {/* Quantity control with HTMX */}
-    <div class="quantity-control" style="display: flex; align-items: center; margin: 1rem 0;">
+    <div class="quantity-control">
       <button
         type="button"
-        style="background: #f5f5f5; border: 1px solid #ddd; padding: 0.5rem 1rem; cursor: pointer;"
+        class="quantity-btn"
         hx-get="/api/decrement?value=1"
         hx-target="#quantity"
         hx-swap="outerHTML"
@@ -39,11 +39,11 @@ export const ProductDetail = ({ product }: ProductDetailProps) => (
         value="1"
         min="1"
         max="10"
-        style="width: 50px; text-align: center; margin: 0 0.5rem; padding: 0.5rem;"
+        class="quantity-input"
       />
       <button
         type="button"
-        style="background: #f5f5f5; border: 1px solid #ddd; padding: 0.5rem 1rem; cursor: pointer;"
+        class="quantity-btn"
         hx-get="/api/increment?value=1"
         hx-target="#quantity"
         hx-swap="outerHTML"
@@ -54,7 +54,6 @@ export const ProductDetail = ({ product }: ProductDetailProps) => (
     <button
       type="button"
       class="btn"
-      style="background: #3498db; color: white; border: none; padding: 0.75rem 1.5rem; cursor: pointer; margin-top: 1rem;"
       hx-post="/api/cart/add"
       hx-vals={`{"productId": "${product.id}", "name": "${product.name}", "price": "${product.price}"}`}
       hx-target="#notification"
@@ -63,10 +62,10 @@ export const ProductDetail = ({ product }: ProductDetailProps) => (
       Add to Cart
     </button>
 
-    <div id="notification" style="margin-top: 1rem;"></div>
+    <div id="notification" class="margin-top"></div>
 
     {/* Related products loaded with HTMX */}
-    <div style="margin-top: 2rem;">
+    <div class="margin-top-xl">
       <h3>Related Products</h3>
       <div hx-get={`/api/products/related/${product.id}`} hx-trigger="load" hx-swap="innerHTML"></div>
     </div>

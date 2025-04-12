@@ -6,17 +6,17 @@ import { ProductCard } from "./ProductCard.tsx";
 export const ProductList = ({ products }: ProductListProps) => (
   <Fragment>
     {/* Hidden spinner for HTMX indicators */}
-    <div id="spinner" class="htmx-indicator" style="display: none;">
+    <div id="spinner" class="htmx-indicator">
       <div class="spinner"></div> Loading...
     </div>
     <h2>Product Catalog</h2>
     <p>Browse our product catalog with search and sorting capabilities.</p>
 
     {/* Search with HTMX */}
-    <div style="margin-bottom: 1.5rem;">
+    <div class="margin-bottom-lg">
       <input
         type="text"
-        style="padding: 0.5rem; width: 100%; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 1rem;"
+        class="search-input"
         placeholder="Search products..."
         hx-get="/api/products/search"
         hx-trigger="keyup changed delay:500ms"
@@ -25,7 +25,7 @@ export const ProductList = ({ products }: ProductListProps) => (
       />
 
       {/* Sort options with HTMX */}
-      <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+      <div class="flex flex-gap margin-bottom">
         <button
           type="button"
           class="btn"

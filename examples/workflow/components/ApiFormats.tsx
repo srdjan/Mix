@@ -5,7 +5,7 @@ import { ApiFormatsProps } from "./types.ts";
 export const ApiFormats = ({ product }: ApiFormatsProps) => (
   <Fragment>
     {/* Hidden spinner for HTMX indicators */}
-    <div id="spinner" class="htmx-indicator" style="display: none;">
+    <div id="spinner" class="htmx-indicator">
       <div class="spinner"></div> Loading...
     </div>
     <h2>API Formats</h2>
