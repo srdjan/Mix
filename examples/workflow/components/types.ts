@@ -7,11 +7,6 @@ export type Product = {
   description: string;
 };
 
-export type LayoutProps = {
-  title: string;
-  children: JSX.Element | JSX.Element[];
-};
-
 export type ProductCardProps = {
   product: Product;
   onViewDetails?: boolean;
