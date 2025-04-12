@@ -42,6 +42,20 @@ Then open your browser to [http://localhost:3000](http://localhost:3000) to see 
 - Lazy loading with `hx-trigger="load"`
 - Polling with `hx-trigger="load, every 2s"`
 
+## Component Structure
+
+The UI is built with reusable components:
+
+- `Layout`: Main page layout with navigation and content area
+- `Home`: Home page content
+- `ProductList`: Product catalog with search and sorting
+- `ProductCard`: Individual product card component
+- `ProductDetail`: Detailed product view
+- `Features`: HTMX features showcase
+- `FeatureCard`: Individual feature card component
+- `ApiFormats`: API format examples
+- `ErrorDemo`: Error handling demonstration
+
 ## Key Workflow Features Demonstrated
 
 ## **State Transitions**

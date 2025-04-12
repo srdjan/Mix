@@ -1,15 +1,15 @@
 /** @jsx h */
 import { h, renderSSR } from "nano";
 import { App } from "../../lib/mix.ts";
-import { 
-  Layout, 
-  Home, 
-  ProductList, 
-  ProductDetail, 
-  Features, 
-  ApiFormats, 
-  ErrorDemo 
-} from "./components.tsx";
+import {
+  Layout,
+  Home,
+  ProductList,
+  ProductDetail,
+  Features,
+  ApiFormats,
+  ErrorDemo
+} from "./components/index.ts";
 
 const app = App();
 const { utils } = app;
@@ -29,7 +29,7 @@ app.get("/", (ctx): void => {
       <Home />
     </Layout>
   );
-  
+
   ctx.response = new Response(html, {
     headers: { "Content-Type": "text/html" }
   });
@@ -40,67 +40,67 @@ app.get("/", (ctx): void => {
 // Home fragment
 app.get("/api/fragments/home", (ctx): void => {
   const html = renderSSR(<Home />);
-  ctx.response = new Response(html, { 
-    headers: { "Content-Type": "text/html" } 
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" }
   });
 });
 
 // Products fragment
 app.get("/api/fragments/products", (ctx): void => {
   const html = renderSSR(<ProductList products={products} />);
-  ctx.response = new Response(html, { 
-    headers: { "Content-Type": "text/html" } 
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" }
   });
 });
 
 // Product detail fragment
 app.get<{ id: string }>("/api/fragments/product-detail/:id", (ctx): void => {
   if (!ctx.validated.params.ok) {
-    ctx.response = new Response("<div class='card'>Invalid product ID</div>", { 
+    ctx.response = new Response("<div class='card'>Invalid product ID</div>", {
       status: 400,
-      headers: { "Content-Type": "text/html" } 
+      headers: { "Content-Type": "text/html" }
     });
     return;
   }
-  
+
   const productId = ctx.validated.params.value.id;
   const product = products.find(p => p.id === productId);
-  
+
   if (!product) {
-    ctx.response = new Response("<div class='card'>Product not found</div>", { 
+    ctx.response = new Response("<div class='card'>Product not found</div>", {
       status: 404,
-      headers: { "Content-Type": "text/html" } 
+      headers: { "Content-Type": "text/html" }
     });
     return;
   }
-  
+
   const html = renderSSR(<ProductDetail product={product} />);
-  ctx.response = new Response(html, { 
-    headers: { "Content-Type": "text/html" } 
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" }
   });
 });
 
 // Features fragment
 app.get("/api/fragments/features", (ctx): void => {
   const html = renderSSR(<Features />);
-  ctx.response = new Response(html, { 
-    headers: { "Content-Type": "text/html" } 
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" }
   });
 });
 
 // API Formats fragment
 app.get("/api/fragments/api-formats", (ctx): void => {
   const html = renderSSR(<ApiFormats product={products[0]} />);
-  ctx.response = new Response(html, { 
-    headers: { "Content-Type": "text/html" } 
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" }
   });
 });
 
 // Error Demo fragment
 app.get("/api/fragments/error-demo", (ctx): void => {
   const html = renderSSR(<ErrorDemo />);
-  ctx.response = new Response(html, { 
-    headers: { "Content-Type": "text/html" } 
+  ctx.response = new Response(html, {
+    headers: { "Content-Type": "text/html" }
   });
 });
 
@@ -124,15 +124,15 @@ app.get<{ id: string }>("/products/:id", (ctx): void => {
     handleError(ctx, 400, "Invalid product ID", ctx.validated.params.error);
     return;
   }
-  
+
   const productId = ctx.validated.params.value.id;
   const product = products.find(p => p.id === productId);
-  
+
   if (!product) {
     handleError(ctx, 404, "Product not found");
     return;
   }
-  
+
   // For HTML responses, use Nano JSX
   if (ctx.preferredMediaType === MediaType.HTML) {
     const html = renderSSR(
@@ -140,13 +140,13 @@ app.get<{ id: string }>("/products/:id", (ctx): void => {
         <ProductDetail product={product} />
       </Layout>
     );
-    
+
     ctx.response = new Response(html, {
       headers: { "Content-Type": "text/html" }
     });
     return;
   }
-  
+
   // For other formats, use createResponse
   ctx.response = createResponse(ctx, product, {
     links: {
@@ -182,7 +182,7 @@ app.get("/products/format/html", (ctx): void => {
       <ProductList products={products} />
     </Layout>
   );
-  
+
   ctx.response = new Response(html, {
     headers: { "Content-Type": "text/html" }
   });
@@ -198,7 +198,7 @@ app.get("/api/increment", (ctx): void => {
     currentValue = parseInt(ctx.validated.query.value.value, 10);
   }
   const newValue = Math.min(currentValue + 1, 10); // Max 10
-  
+
   // Return just the HTML for the input element
   ctx.response = new Response(
     `<input type="number" id="quantity" name="quantity" value="${newValue}" min="1" max="10">`,
@@ -214,7 +214,7 @@ app.get("/api/decrement", (ctx): void => {
     currentValue = parseInt(ctx.validated.query.value.value, 10);
   }
   const newValue = Math.max(currentValue - 1, 1); // Min 1
-  
+
   // Return just the HTML for the input element
   ctx.response = new Response(
     `<input type="number" id="quantity" name="quantity" value="${newValue}" min="1" max="10">`,
@@ -259,14 +259,14 @@ app.get<{ id: string }>("/api/products/related/:id", (ctx): void => {
     ctx.response = new Response("Invalid product ID", { status: 400 });
     return;
   }
-  
+
   const productId = ctx.validated.params.value.id;
   // Filter out the current product and get 2 random products
   const relatedProducts = products
     .filter(p => p.id !== productId)
     .sort(() => Math.random() - 0.5)
     .slice(0, 2);
-  
+
   ctx.response = new Response(
     `<ul>
       ${relatedProducts.map(p => `
@@ -285,14 +285,14 @@ app.get("/api/products/search", (ctx): void => {
   if (ctx.validated.query.ok && ctx.validated.query.value.query) {
     query = ctx.validated.query.value.query.toLowerCase();
   }
-  
-  const filteredProducts = query ? 
-    products.filter(p => 
-      p.name.toLowerCase().includes(query) || 
+
+  const filteredProducts = query ?
+    products.filter(p =>
+      p.name.toLowerCase().includes(query) ||
       p.description.toLowerCase().includes(query)
-    ) : 
+    ) :
     products;
-  
+
   // Use Nano JSX to render the product cards
   const html = renderSSR(
     <div class="product-grid">
@@ -301,7 +301,7 @@ app.get("/api/products/search", (ctx): void => {
           <h3 class="product-name">{product.name}</h3>
           <div class="product-price">${product.price}</div>
           <p class="product-description">{product.description}</p>
-          <button 
+          <button
             type="button"
             class="btn"
             hx-get={`/api/fragments/product-detail/${product.id}`}
@@ -313,7 +313,7 @@ app.get("/api/products/search", (ctx): void => {
       ))}
     </div>
   );
-  
+
   ctx.response = new Response(html, { headers: { "Content-Type": "text/html" } });
 });
 
@@ -323,10 +323,10 @@ app.get<{ method: string }>("/api/products/sort/:method", (ctx): void => {
     ctx.response = new Response("Invalid sort method", { status: 400 });
     return;
   }
-  
+
   const method = ctx.validated.params.value.method;
   const sortedProducts = [...products];
-  
+
   switch (method) {
     case "name":
       sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
@@ -338,7 +338,7 @@ app.get<{ method: string }>("/api/products/sort/:method", (ctx): void => {
       sortedProducts.sort((a, b) => b.price - a.price);
       break;
   }
-  
+
   // Use Nano JSX to render the product cards
   const html = renderSSR(
     <div class="product-grid">
@@ -347,7 +347,7 @@ app.get<{ method: string }>("/api/products/sort/:method", (ctx): void => {
           <h3 class="product-name">{product.name}</h3>
           <div class="product-price">${product.price}</div>
           <p class="product-description">{product.description}</p>
-          <button 
+          <button
             type="button"
             class="btn"
             hx-get={`/api/fragments/product-detail/${product.id}`}
@@ -359,7 +359,7 @@ app.get<{ method: string }>("/api/products/sort/:method", (ctx): void => {
       ))}
     </div>
   );
-  
+
   ctx.response = new Response(html, { headers: { "Content-Type": "text/html" } });
 });
 
@@ -367,7 +367,7 @@ app.get<{ method: string }>("/api/products/sort/:method", (ctx): void => {
 app.post("/api/demo/click-counter", (ctx): void => {
   // Generate a random number between 1 and 100
   const count = Math.floor(Math.random() * 100) + 1;
-  
+
   ctx.response = new Response(`Click count: ${count}`, {
     headers: { "Content-Type": "text/html" }
   });
