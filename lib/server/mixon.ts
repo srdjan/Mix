@@ -83,8 +83,13 @@ type Handler<T extends Context = Context> = (ctx: T) => Promise<void> | void;
 // Validation result type
 export type ValidationResult<T> = Result<T, string[]>;
 
+// Type for ArkType schema
+type ArkTypeSchema = {
+  (input: unknown): { data: unknown; problems?: string | string[] };
+};
+
 // Enhanced validation with pattern matching
-const validate = <T>(schema: ReturnType<typeof type>, input: unknown): ValidationResult<T> => {
+const validate = <T>(schema: ArkTypeSchema, input: unknown): ValidationResult<T> => {
   const result = schema(input);
 
   if (!result.problems) {
@@ -526,7 +531,13 @@ export const createLinks = (resourcePath: string, id: string): Record<string, st
 };
 
 // ======== ROUTER ========
-export const createRouter = () => {
+// Router type definition
+type Router = {
+  add: (method: string, path: string, handler: Middleware) => void;
+  match: (request: Request) => { handler: Middleware; params: Record<string, string> } | null;
+};
+
+export const createRouter = (): Router => {
   const staticRoutes = new Map<string, Map<string, Middleware>>();
   const dynamicRoutes: Route[] = [];
 
@@ -605,7 +616,25 @@ export const findTransition = (
   instance.definition.transitions.find(t => t.from === instance.currentState && t.on === event);
 
 // ======== APP FACTORY ========
-export const App = () => {
+// App type definition
+type AppInstance = {
+  use: (middleware: Middleware) => AppInstance;
+  get: (path: string, handler: Handler) => AppInstance;
+  post: (path: string, handler: Handler) => AppInstance;
+  put: (path: string, handler: Handler) => AppInstance;
+  patch: (path: string, handler: Handler) => AppInstance;
+  delete: (path: string, handler: Handler) => AppInstance;
+  listen: (port: number, hostname?: string) => unknown;
+  workflow: () => unknown; // Using unknown instead of any
+  utils: {
+    createResponse: typeof createResponse;
+    handleError: typeof handleError;
+    createLinks: typeof createLinks;
+    MediaType: typeof MediaType;
+  };
+};
+
+export const App = (): AppInstance => {
   const middlewares: Middleware[] = [];
   const router = createRouter();
   const controller = new AbortController();
@@ -815,6 +844,11 @@ export const App = () => {
       path: string,
       handler: Handler<Context & { validated: { params: ValidationResult<P> } }>
     ) => route("DELETE", path, handler),
+
+    patch: <P extends Record<string, string> = Record<string, string>, B = unknown>(
+      path: string,
+      handler: Handler<Context & { validated: { params: ValidationResult<P>; body: ValidationResult<B> } }>
+    ) => route("PATCH", path, handler),
 
     workflow: () => createWorkflowEngine(),
 

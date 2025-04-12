@@ -4,6 +4,7 @@
   "exports": "./mod.ts",
   "description": "Type-Safe API & Workflow Microframework for Deno",
   "readme": "./JSR.md",
+  "license": "MIT",
   "tasks": {
     "dev": "deno run --watch main.ts",
     "workflow": "deno run --allow-net --allow-read examples/workflow/workflow.tsx",
