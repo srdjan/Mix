@@ -331,7 +331,6 @@ export const handleError = (ctx: Context, status: number, message: string, detai
       });
     })
     .with({ mediaType: MediaType.HAL, hasDetails: true }, () => {
-      // HAL error response with details
       return new Response(JSON.stringify({
         error: message,
         details,
@@ -344,7 +343,6 @@ export const handleError = (ctx: Context, status: number, message: string, detai
       });
     })
     .with({ mediaType: MediaType.HAL, hasDetails: false }, () => {
-      // HAL error response without details
       return new Response(JSON.stringify({
         error: message,
         _links: {
