@@ -49,17 +49,120 @@ app.listen(3000);
 
 ## Installation 📦
 
-```typescript
-// Import directly from Deno.land
-import { App, type, match } from "./lib/Mixon.ts";
+Mixon is designed for Deno, making installation straightforward with no package manager or complex setup required.
 
-// Access utility functions
-const app = App();
-const { utils } = app;
-const { handleError, createResponse, createLinks } = utils;
+### Prerequisites
+
+- [Deno](https://deno.land/) v2.0 or higher
+
+### Direct Import
+
+The simplest way to use Mixon is to import it directly from your project:
+
+```typescript
+// Import from local path
+import { App } from "./lib/Mixon.ts";
+
+// Or import specific utilities
+import { App, type, match } from "./lib/Mixon.ts";
 ```
 
-Permissions (add to deno.json):
+### Import from Deno.land
+
+You can also import Mixon directly from Deno.land (once published):
+
+```typescript
+// Import the latest version
+import { App } from "https://deno.land/x/mixon/mod.ts";
+
+// Or import a specific version
+import { App, type, match } from "https://deno.land/x/mixon@v1.0.0/mod.ts";
+```
+
+### Clone the Repository
+
+To get started with the examples and have the full source code:
+
+```bash
+# Clone the repository
+git clone https://github.com/srdjan/Mixon.git
+cd Mixon
+
+# Run an example
+deno task workflow
+```
+
+### Project Configuration
+
+Create a `deno.json` file in your project root with the following permissions:
+
+```json
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-read main.ts",
+    "dev": "deno run --watch --allow-net --allow-read main.ts"
+  },
+  "permissions": {
+    "net": true,
+    "read": true,
+    "write": true
+  }
+}
+```
+
+### Importing in Your Project
+
+Create your main application file (e.g., `main.ts`):
+
+```typescript
+import { App } from "./lib/Mixon.ts";
+
+const app = App();
+const { utils } = app;
+
+app.get("/", (ctx) => {
+  ctx.response = utils.createResponse(ctx, { message: "Hello from Mixon!" });
+});
+
+console.log("Server running at http://localhost:3000");
+app.listen(3000);
+```
+
+Run your application:
+
+```bash
+deno task start
+# or for development with auto-reload
+deno task dev
+```
+
+## Usage 🚀
+
+After installing Mixon, you can start using it in your project:
+
+```typescript
+// Import Mixon
+import { App, type, match } from "./lib/Mixon.ts";
+// or from Deno.land
+// import { App, type, match } from "https://deno.land/x/mixon/mod.ts";
+
+// Create an app instance
+const app = App();
+
+// Access utility functions
+const { utils } = app;
+const { handleError, createResponse, createLinks } = utils;
+
+// Define routes
+app.get("/hello", (ctx) => {
+  ctx.response = createResponse(ctx, { message: "Hello World" });
+});
+
+// Start the server
+app.listen(3000);
+```
+
+Make sure your deno.json includes the necessary permissions:
 
 ```json
 {
