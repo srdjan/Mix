@@ -523,6 +523,27 @@ export const handleResult = <T, E, R>(
   .exhaustive();
 
 // Utility functions with pattern matching
+/**
+ * Creates a standardized error response.
+ *
+ * @param ctx - The request context
+ * @param status - The HTTP status code
+ * @param message - The error message
+ * @param details - Optional error details (validation errors, etc.)
+ * @returns The modified context with error response
+ *
+ * @example
+ * ```typescript
+ * // Basic error
+ * handleError(ctx, 404, "Product not found");
+ *
+ * // Error with details
+ * handleError(ctx, 400, "Validation failed", [
+ *   "Name is required",
+ *   "Price must be positive"
+ * ]);
+ * ```
+ */
 export const handleError = (ctx: Context, status: number, message: string, details?: unknown): Context => {
   ctx.status = status;
 
@@ -599,7 +620,18 @@ export const handleError = (ctx: Context, status: number, message: string, detai
   return ctx;
 };
 
-// HTML template rendering function
+/**
+ * Renders data as HTML using an optional template.
+ *
+ * @param data - The data to render in the HTML template
+ * @param template - Optional HTML template with {{variable}} placeholders
+ * @returns Rendered HTML string
+ *
+ * @example
+ * ```typescript
+ * const html = renderHtml({ name: "John", age: 30 }, "<h1>{{name}}</h1><p>Age: {{age}}</p>");
+ * ```
+ */
 export const renderHtml = (data: unknown, template?: string): string => {
   if (!template) {
     const html = `<fragment>
@@ -621,7 +653,20 @@ export const renderHtml = (data: unknown, template?: string): string => {
   return rendered;
 };
 
-// Parse Accept header to determine preferred media type
+/**
+ * Parses the Accept header to determine the client's preferred media type.
+ * Handles quality values (q) and defaults to JSON if no match is found.
+ *
+ * @param acceptHeader - The Accept header string from the request
+ * @returns The preferred MediaType enum value
+ *
+ * @example
+ * ```typescript
+ * // For Accept: application/json, text/html;q=0.9
+ * const mediaType = parseAcceptHeader(request.headers.get('Accept'));
+ * // Returns MediaType.JSON
+ * ```
+ */
 export const parseAcceptHeader = (acceptHeader: string | null): MediaType => {
   if (!acceptHeader) return MediaType.JSON;
 
@@ -641,7 +686,33 @@ export const parseAcceptHeader = (acceptHeader: string | null): MediaType => {
   return MediaType.JSON; // Default to JSON if no match
 };
 
-// Enhanced createResponse with content negotiation
+/**
+ * Creates a response with content negotiation based on the client's Accept header.
+ * Supports JSON, HAL+JSON, and HTML formats with hypermedia controls.
+ *
+ * @param ctx - The request context
+ * @param data - The data to include in the response
+ * @param options - Optional configuration
+ * @param options.links - HATEOAS links to include in the response
+ * @param options.meta - Metadata to include in the response
+ * @param options.template - HTML template string for HTML responses
+ * @param options.mediaType - Override the negotiated media type
+ * @returns A Response object with the appropriate content type and format
+ *
+ * @example
+ * ```typescript
+ * // Basic usage
+ * ctx.response = createResponse(ctx, { name: "Product", price: 29.99 });
+ *
+ * // With HATEOAS links
+ * ctx.response = createResponse(ctx, product, {
+ *   links: {
+ *     self: `/products/${product.id}`,
+ *     related: `/products/related/${product.id}`
+ *   }
+ * });
+ * ```
+ */
 export const createResponse = (ctx: Context, data: unknown, options?: {
   links?: Record<string, unknown>;
   meta?: Record<string, unknown>;
@@ -739,6 +810,19 @@ export const createResponse = (ctx: Context, data: unknown, options?: {
     });
 };
 
+/**
+ * Creates standard HATEOAS links for a resource.
+ *
+ * @param resourcePath - The base path for the resource collection
+ * @param id - The resource identifier
+ * @returns An object containing self and collection links
+ *
+ * @example
+ * ```typescript
+ * const links = createLinks('/products', '123');
+ * // Returns { self: '/products/123', collection: '/products' }
+ * ```
+ */
 export const createLinks = (resourcePath: string, id: string): Record<string, string> => {
   // Use pattern matching to handle different resource path formats
   return match<{ hasLeadingSlash: boolean }, Record<string, string>>({ hasLeadingSlash: resourcePath.startsWith('/') })
@@ -801,16 +885,61 @@ export const createRouter = (): Router => {
   return { add, match: findMatch };
 };
 
-// ======== WORKFLOW FUNCTIONS ========
+/**
+ * ======== WORKFLOW FUNCTIONS ========
+ * These functions provide state machine functionality for workflow management.
+ */
+
+/**
+ * Checks if a workflow instance can transition to a new state based on an event.
+ *
+ * @param instance - The workflow instance to check
+ * @param event - The event to apply
+ * @returns True if the transition is valid, false otherwise
+ *
+ * @example
+ * ```typescript
+ * if (canTransition(orderWorkflow, 'APPROVE')) {
+ *   // Can approve the order
+ * }
+ * ```
+ */
 export const canTransition = (instance: WorkflowInstance, event: WorkflowEvent): boolean =>
   instance.definition.transitions.some(t => t.from === instance.currentState && t.on === event);
 
+/**
+ * Gets all pending tasks for a workflow instance.
+ *
+ * @param instance - The workflow instance
+ * @returns Array of pending tasks
+ */
 export const getPendingTasks = (instance: WorkflowInstance): Array<WorkflowTransition["task"]> => [...instance.tasks];
 
+/**
+ * Assigns a new task to a workflow instance.
+ *
+ * @param instance - The workflow instance
+ * @param task - The task to assign
+ */
 export const assignTask = (instance: WorkflowInstance, task: WorkflowTransition["task"]): void => {
   instance.tasks.push(task);
 };
 
+/**
+ * Applies a transition to a workflow instance if valid.
+ * Updates the instance state and history.
+ *
+ * @param instance - The workflow instance to update
+ * @param event - The event triggering the transition
+ * @returns True if the transition was applied, false if invalid
+ *
+ * @example
+ * ```typescript
+ * if (applyTransition(orderWorkflow, 'APPROVE')) {
+ *   console.log('Order approved successfully');
+ * }
+ * ```
+ */
 export const applyTransition = (instance: WorkflowInstance, event: WorkflowEvent): boolean => {
   const transition = instance.definition.transitions.find(t =>
     t.from === instance.currentState && t.on === event);
@@ -832,6 +961,13 @@ export const applyTransition = (instance: WorkflowInstance, event: WorkflowEvent
     .exhaustive();
 };
 
+/**
+ * Finds a transition definition for a given workflow instance and event.
+ *
+ * @param instance - The workflow instance
+ * @param event - The event to find a transition for
+ * @returns The transition definition if found, undefined otherwise
+ */
 export const findTransition = (
   instance: WorkflowInstance,
   event: WorkflowEvent
@@ -1033,6 +1169,35 @@ export const App = (): AppInstance => {
   };
 
   // Workflow engine factory
+  /**
+   * Creates a workflow engine for managing stateful workflows.
+   *
+   * @returns A workflow engine instance with methods for defining and managing workflows
+   *
+   * @example
+   * ```typescript
+   * const workflow = app.workflow();
+   *
+   * // Define a document workflow
+   * const documentWorkflow = workflow.define({
+   *   name: 'document',
+   *   initialState: 'Draft',
+   *   states: ['Draft', 'Review', 'Approved', 'Published'],
+   *   transitions: [
+   *     { from: 'Draft', to: 'Review', on: 'Submit' },
+   *     { from: 'Review', to: 'Approved', on: 'Approve' },
+   *     { from: 'Review', to: 'Draft', on: 'Reject' },
+   *     { from: 'Approved', to: 'Published', on: 'Publish' }
+   *   ]
+   * });
+   *
+   * // Create an instance
+   * const instance = workflow.createInstance('document', 'doc-123');
+   *
+   * // Apply a transition
+   * workflow.transition(instance.id, 'Submit');
+   * ```
+   */
   const createWorkflowEngine = () => {
     let definition: WorkflowDefinition = {
       states: [],
