@@ -1,122 +1,172 @@
-# Key Features Demonstrated
+# Product Catalog API Example
+
+This example demonstrates a simple product catalog API without HATEOAS support. It focuses on basic CRUD operations for products with proper validation and error handling.
 
 ## **Type-Safe Validation**
 
 ```typescript
-// Schema with nested validation
-const productSchema = scope({
-  name: "string>3",
-  price: "number>0",
-  category: "'electronics'|'books'|'clothing'",
-  metadata: {
-    sku: /^[A-Z]{3}-d{4}$/ // ABC-1234 format
-  }
-}).compile();
+// Product type definition with strong typing
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: ProductCategory;
+  inStock: boolean;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Type-safe category enumeration
+type ProductCategory = 'electronics' | 'books' | 'clothing' | 'home' | 'sports';
 ```
 
-## **HATEOAS Support**
+## **Clean JSON Responses**
 
 ```typescript
-// Response with navigation links
-ctx.json({
-  data: results,
-  _links: {
-    self: `/products?page=${page}`,
-    next: `/products?page=${page + 1}`,
-    prev: page > 1 ? `/products?page=${page - 1}` : undefined
+// Simple, clean JSON response without HATEOAS links
+ctx.response = createResponse(ctx, {
+  products: results,
+  metadata: {
+    total: filteredProducts.length,
+    page,
+    limit,
+    pages: Math.ceil(filteredProducts.length / limit)
   }
 });
 ```
 
 ## **RESTful Endpoints**
 
-| Method | Path              | Description               |
-|--------|-------------------|---------------------------|
-| GET    | /products         | Paginated product list    |
-| POST   | /products         | Create new product        |
-| GET    | /products/{sku}   | Product details           |
-| PUT    | /products/{sku}   | Update product            |
+| Method | Path                  | Description                    |
+|--------|----------------------|--------------------------------|
+| GET    | /products             | Paginated & filtered products  |
+| GET    | /products/search      | Search products by text        |
+| GET    | /products/categories  | List all product categories    |
+| GET    | /products/{id}        | Get product details by ID      |
+| POST   | /products             | Create a new product           |
+| PUT    | /products/{id}        | Update an existing product     |
+| DELETE | /products/{id}        | Delete a product               |
 
 ## **Error Handling**
 
 ```typescript
-// Custom error responses
-ctx.status = 409;
-ctx.json({ error: "Product SKU already exists" });
+// Consistent error handling with utility function
+if (!products.has(productId)) {
+  handleError(ctx, 404, "Product not found");
+  return;
+}
 
-// Global error handler
-ctx.json({ 
-  error: "Internal server error",
-  requestId: "a1b2c3d4" 
-});
-```
+// Validation error handling
+if (updateData.id || updateData.createdAt) {
+  handleError(ctx, 400, "Cannot update immutable fields (id, createdAt)");
+  return;
+}
 
-## **Security**
+// Global error handler in middleware
+try {
+  await next();
 
-```typescript
-// API Key authentication middleware
-const apiKey = ctx.request.headers.get("X-API-Key");
-if (apiKey !== Deno.env.get("API_KEY")) {
-  ctx.status = 401;
-  return ctx.json({ error: "Invalid API key" });
+  // 404 handler
+  if (!ctx.response) {
+    handleError(ctx, 404, "Endpoint not found");
+  }
+} catch (err) {
+  console.error("API Error:", err);
+  handleError(ctx, 500, "Internal server error", { requestId: crypto.randomUUID() });
 }
 ```
 
-### Testing the API
+## **Performance Tracking**
+
+```typescript
+// Performance tracking middleware
+const start = performance.now();
+
+try {
+  await next();
+  // ... handle the request
+} finally {
+  const duration = performance.now() - start;
+  console.log(`Request processed in ${duration.toFixed(2)}ms`);
+}
+```
+
+## Testing the API
 
 **Create Product:**
 
 ```bash
 curl -X POST http://localhost:3000/products \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-secret-key" \
   -d '{
-    "name": "Mechanical Keyboard",
-    "price": 129.99,
+    "name": "Bluetooth Headphones",
+    "description": "Noise cancelling wireless headphones",
+    "price": 149.99,
     "category": "electronics",
     "inStock": true,
-    "metadata": {
-      "tags": ["tech", "input"],
-      "sku": "KEY-5678"
-    }
+    "quantity": 30
   }'
 ```
 
-**Get Product:**
+**Get Product by ID:**
 
 ```bash
-curl http://localhost:3000/products/KEY-5678
+curl http://localhost:3000/products/p001
+```
+
+**Search Products:**
+
+```bash
+curl http://localhost:3000/products/search?q=mouse
+```
+
+**Get Categories:**
+
+```bash
+curl http://localhost:3000/products/categories
 ```
 
 **Update Product:**
 
 ```bash
-curl -X PUT http://localhost:3000/products/KEY-5678 \
+curl -X PUT http://localhost:3000/products/p001 \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-secret-key" \
-  -d '{"price": 139.99}'
+  -d '{
+    "price": 24.99,
+    "quantity": 75
+  }'
 ```
 
-**Paginated List:**
+**Delete Product:**
 
 ```bash
-curl http://localhost:3000/products?page=2
+curl -X DELETE http://localhost:3000/products/p001
 ```
+
+**Paginated & Filtered List:**
+
+```bash
+curl http://localhost:3000/products?page=1&limit=5&category=electronics
+```
+
+## Features Demonstrated
 
 This example showcases Mixon's capabilities for building:
 
-- Type-safe REST APIs
-- Validation-driven endpoints
-- HATEOAS-compliant responses
-- Enterprise-grade error handling
-- Secure authentication flows
-- Clean project organization
+- Type-safe REST APIs with TypeScript interfaces
+- Comprehensive CRUD operations
+- Validation-driven endpoints with proper error handling
+- Clean JSON responses without HATEOAS complexity
+- Performance tracking middleware
+- Search and filtering functionality
+- Pagination with metadata
 
-The API can be extended with additional features like:
+## Running the Example
 
-- Rate limiting
-- Caching headers
-- OpenAPI documentation
-- Database integration
-- Search endpoints
-- Category-specific routes
+```bash
+deno run --allow-net examples/product/product-api.ts
+```
+
+Then visit <http://localhost:3000/products> in your browser or use the curl commands above to interact with the API.
