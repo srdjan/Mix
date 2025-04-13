@@ -1,16 +1,12 @@
-<div align="center">
-
 # Mixon 🚀
 
 [![JSR](https://jsr.io/badges/@srdjan/mixon)](https://jsr.io/@srdjan/mixon)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-24292e.svg?style=flat&logo=github)](https://github.com/srdjan/Mixon)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-**A lightweight, type-safe microframework for building modern web applications and APIs in Deno**
+A lightweight, type-safe microframework for building modern web applications and APIs in Deno.
 
-*Combining the simplicity of minimal frameworks with powerful features like runtime type validation, elegant pattern matching, content negotiation, and HATEOAS support*
-
-</div>
+Combining the simplicity of minimal frameworks with powerful features like runtime type validation, elegant pattern matching, content negotiation, and HATEOAS support.
 
 ## Why Mixon? 🤔
 
