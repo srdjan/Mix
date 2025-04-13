@@ -1,0 +1,203 @@
+html {
+  font-size: 100%;
+  box-sizing: border-box;
+}
+
+* {
+  box-sizing: inherit;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-size: calc(1rem + 0.390625vw);
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: 30% 70%;
+  grid-auto-rows: minmax(100px, auto);
+  max-width: 1000px;
+  margin: 0.5rem auto;
+}
+
+header {
+  grid-column: span 2;
+  grid-row: 1;
+  padding-top: 1rem;
+  padding-left: 0.5rem;
+  text-align: center;
+}
+
+aside {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+article {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 0.5rem 0.5rem;
+}
+
+footer {
+  grid-column: span 2;
+  grid-row: 3;
+  padding-top: 10rem;
+  text-align: center;
+  font-size: 12px;
+}
+
+h1,
+h2 {
+  font-size: 2.5rem;
+  font-weight: bold;
+  line-height: normal;
+}
+
+h2 {
+  font-size: 2rem;
+  padding-top: 0;
+}
+
+p {
+  line-height: 1.4rem;
+  text-wrap: pretty;
+}
+
+a {
+  color: #2a2c30;
+  text-decoration: underline;
+  text-decoration-color: #dedfdf;
+  text-decoration-thickness: 2px;
+}
+
+a:focus,
+a:hover {
+  text-decoration-color: #9a9ab7;
+  cursor: pointer;
+}
+
+.ph--house-line-duotone {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-right: 5px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cg fill='%238d8b8b'%3E%3Cpath d='M216 115.54V216h-64v-56a8 8 0 0 0-8-8h-32a8 8 0 0 0-8 8v56H40V115.54a8 8 0 0 1 2.62-5.92l80-75.54a8 8 0 0 1 10.77 0l80 75.54a8 8 0 0 1 2.61 5.92' opacity='0.2'/%3E%3Cpath d='M240 208h-16v-92.45a16 16 0 0 0-5.17-11.78l-80-75.48a1.14 1.14 0 0 1-.11-.11a16 16 0 0 0-21.53 0l-.11.11l-79.91 75.48A16 16 0 0 0 32 115.55V208H16a8 8 0 0 0 0 16h224a8 8 0 0 0 0-16M48 115.55l.11-.1L128 40l79.9 75.43l.11.1V208H160v-48a16 16 0 0 0-16-16h-32a16 16 0 0 0-16 16v48H48ZM144 208h-32v-48h32Z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+dl {
+  padding: 0;
+}
+
+dd {
+  font-size: 1rem;
+  line-height: 1.4rem;
+  margin-inline-start: 10px;
+  padding-left: 5px;
+}
+
+.dd-border {
+  border-left: solid;
+  border-left-width: 2px;
+  border-left-color: #868d8d;
+}
+
+dt {
+  font-size: 1rem;
+  font-weight: 600;
+  padding-top: 0.5rem;
+}
+
+/* dt::before {
+  content: url('https://api.iconify.design/bi/bell-fill.svg?height=32&color=gray');
+} */
+@media (max-width: 1000px) {
+  #grid {
+    margin: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  #grid {
+    display: block;
+    width: 100%;
+    margin: 0;
+  }
+
+  article,
+  aside {
+    width: 100%;
+  }
+}
+
+.logo {
+  position: absolute;
+  top: 3.5rem;
+  /* left: calc(35% - 2.7vw); */
+  display: block;
+  border: 1px black solid;
+}
+
+#one {
+  width: 40px;
+  height: 40px;
+  animation-name: anim1;
+  animation-duration: 1.5s;
+  animation-timing-function: ease-in;
+  animation-iteration-count: 1;
+}
+
+#two {
+  width: 30px;
+  height: 30px;
+  animation-name: anim2;
+  animation-delay: 0.1s;
+  animation-duration: 1.3s;
+  animation-timing-function: ease-in;
+  animation-iteration-count: 1;
+}
+
+#three {
+  width: 20px;
+  height: 20px;
+  animation-name: anim3;
+  animation-duration: 1.1s;
+  animation-delay: 0.3s;
+  animation-timing-function: ease-in;
+  animation-iteration-count: 1;
+}
+
+@keyframes anim1 {
+  10% {
+    width: 0px;
+  }
+
+  100% {
+    width: 40px;
+    transform: rotate(180deg);
+  }
+}
+
+@keyframes anim2 {
+  10% {
+    width: 0px;
+  }
+
+  100% {
+    width30px;
+    transform: rotate(180deg);
+  }
+}
+
+@keyframes anim3 {
+  10% {
+    width: 0px;
+  }
+
+  100% {
+    width: 20px;
+    transform: rotate(180deg);
+  }
+}
