@@ -1,4 +1,4 @@
-# Mixon Documentation Overview
+# Overview
 
 This document provides a comprehensive overview of the Mixon documentation structure, helping you navigate the available resources and find the information you need.
 
