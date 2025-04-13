@@ -1,15 +1,88 @@
+/**
+ * Import ArkType's type and scope functions for runtime type validation.
+ *
+ * ArkType provides powerful runtime type validation with perfect TypeScript inference.
+ */
 import { type, scope } from "arktype";
 
+/**
+ * Re-export ArkType's type and scope functions.
+ *
+ * @example
+ * ```typescript
+ * import { type } from "jsr:@srdjan/mixon";
+ *
+ * const userSchema = type({
+ *   id: "string",
+ *   name: "string",
+ *   age: "number"
+ * });
+ * ```
+ */
 export { type, scope };
 
-// Custom pattern matching implementation
+/**
+ * Interface for the pattern matching result.
+ *
+ * @template T - The type of the value being matched against
+ * @template R - The return type of the pattern matching operation
+ */
 type MatchResult<T, R> = {
+  /**
+   * Match against a specific pattern.
+   *
+   * @template P - The pattern type
+   * @param pattern - The pattern to match against
+   * @param handler - The handler function to execute if the pattern matches
+   * @returns The match result for chaining
+   */
   with: <P>(pattern: P, handler: (value: T) => R) => MatchResult<T, R>;
+
+  /**
+   * Match based on a predicate function.
+   *
+   * @param predicate - Function that returns true if the value matches
+   * @param handler - The handler function to execute if the predicate returns true
+   * @returns The match result for chaining
+   */
   when: (predicate: (value: T) => boolean, handler: () => R) => MatchResult<T, R>;
+
+  /**
+   * Provide a fallback handler for when no patterns match.
+   *
+   * @param fallback - The fallback handler function
+   * @returns The result of the matching operation
+   */
   otherwise: (fallback: () => R) => R;
+
+  /**
+   * Ensure that at least one pattern has matched, throwing an error if none did.
+   *
+   * @returns The result of the matching operation
+   * @throws Error if no patterns matched
+   */
   exhaustive: () => R;
 };
 
+/**
+ * Creates a pattern matching expression for the given value.
+ *
+ * @template T - The type of the value being matched against
+ * @template R - The return type of the pattern matching operation
+ * @param value - The value to match against patterns
+ * @returns A MatchResult object for defining patterns
+ *
+ * @example
+ * ```typescript
+ * import { match } from "jsr:@srdjan/mixon";
+ *
+ * const result = match(response.status)
+ *   .with(200, () => "Success")
+ *   .with(404, () => "Not Found")
+ *   .with(500, () => "Server Error")
+ *   .otherwise(() => "Unknown Status");
+ * ```
+ */
 const match = <T, R>(value: T): MatchResult<T, R> => {
   let matched = false;
   let result: R | undefined;
@@ -65,30 +138,115 @@ const match = <T, R>(value: T): MatchResult<T, R> => {
   return matchResult;
 };
 
-// Helper for checking arrays in pattern matching
+/**
+ * Helper for checking arrays in pattern matching.
+ *
+ * @returns A function that can be used in pattern matching to match arrays
+ *
+ * @example
+ * ```typescript
+ * import { match } from "jsr:@srdjan/mixon";
+ *
+ * const result = match(data)
+ *   .with({ items: match.array() }, (data) => `Found ${data.items.length} items`)
+ *   .otherwise(() => "No items found");
+ * ```
+ */
 match.array = (): unknown => true;
 
 export { match };
 
-// ======== RESULT TYPE FOR ERROR HANDLING ========
+/**
+ * Result type for error handling, inspired by Rust's Result type.
+ *
+ * This type represents either a successful result with a value,
+ * or an error result with an error object.
+ *
+ * @template T - The type of the successful value
+ * @template E - The type of the error, defaults to Error
+ */
 type Result<T, E = Error> =
   | { ok: true; value: T }
   | { ok: false; error: E };
 
-// ======== CORE TYPES ========
+/**
+ * ======== CORE TYPES ========
+ * These types form the foundation of the Mixon framework.
+ */
+
+/**
+ * Function type for middleware's next() function.
+ * Calling next() proceeds to the next middleware in the chain.
+ */
 type Next = () => Promise<void>;
+
+/**
+ * Middleware function type.
+ * Middleware functions can modify the context and control the flow of the request.
+ *
+ * @template T - The context type, defaults to Context
+ * @param ctx - The request context
+ * @param next - Function to call the next middleware
+ * @returns A promise that resolves when the middleware completes
+ */
 type Middleware<T extends Context = Context> = (ctx: T, next: Next) => Promise<void>;
+
+/**
+ * Request handler function type.
+ * Handlers are the final recipients of requests after middleware processing.
+ *
+ * @template T - The context type, defaults to Context
+ * @param ctx - The request context
+ * @returns A promise that resolves when the handler completes, or void
+ */
 type Handler<T extends Context = Context> = (ctx: T) => Promise<void> | void;
 
-// Validation result type
+/**
+ * Validation result type for type-safe request validation.
+ * Represents either a successful validation with the validated value,
+ * or a failed validation with an array of error messages.
+ *
+ * @template T - The type of the validated value
+ */
 export type ValidationResult<T> = Result<T, string[]>;
 
-// Type for ArkType schema
+/**
+ * Type for ArkType schema functions.
+ *
+ * @param input - The unknown input to validate
+ * @returns An object with the validated data and optional problems
+ */
 type ArkTypeSchema = {
   (input: unknown): { data: unknown; problems?: string | string[] };
 };
 
-// Enhanced validation with pattern matching
+/**
+ * Enhanced validation function that uses ArkType schemas.
+ *
+ * @template T - The expected type of the validated value
+ * @param schema - The ArkType schema to validate against
+ * @param input - The unknown input to validate
+ * @returns A ValidationResult containing either the validated value or error messages
+ *
+ * @example
+ * ```typescript
+ * import { type, validate } from "jsr:@srdjan/mixon";
+ *
+ * const userSchema = type({
+ *   id: "string",
+ *   name: "string",
+ *   age: "number"
+ * });
+ *
+ * const result = validate(userSchema, userInput);
+ *
+ * if (result.ok) {
+ *   // Use result.value safely with full type information
+ * } else {
+ *   // Handle validation errors in result.error
+ * }
+ * ```
+ */
 const validate = <T>(schema: ArkTypeSchema, input: unknown): ValidationResult<T> => {
   const result = schema(input);
 
@@ -99,26 +257,47 @@ const validate = <T>(schema: ArkTypeSchema, input: unknown): ValidationResult<T>
   }
 };
 
-// Media type constants
+/**
+ * Media types for content negotiation.
+ * Used for determining the response format based on the Accept header.
+ */
 export enum MediaType {
+  /** Standard JSON format */
   JSON = 'application/json',
+  /** Hypermedia Application Language JSON format */
   HAL = 'application/hal+json',
+  /** HTML format */
   HTML = 'text/html',
+  /** Any format (wildcard) */
   ANY = '*/*'
 }
 
-// Enhanced context with response property and preferred media type
+/**
+ * Enhanced request context with response property and preferred media type.
+ * This is the core object that gets passed through middleware and to handlers.
+ */
 export type Context = {
+  /** The original request object */
   request: Request;
+  /** The HTTP status code */
   status: number;
+  /** Response headers */
   headers: Headers;
+  /** State object for sharing data between middleware */
   state: Record<string, unknown>;
+  /** The response object that will be sent back to the client */
   response?: Response;
+  /** The preferred media type based on the Accept header */
   preferredMediaType: MediaType;
+  /** Validated request components */
   validated: {
+    /** Validated request body */
     body: ValidationResult<unknown>;
+    /** Validated path parameters */
     params: ValidationResult<Record<string, string>>;
+    /** Validated query parameters */
     query: ValidationResult<Record<string, string>>;
+    /** Validated request headers */
     headers: ValidationResult<Record<string, string>>;
   };
 };
@@ -221,8 +400,18 @@ type WorkflowContext = Context & {
   };
 };
 
-// ======== CORE FUNCTIONS ========
-// Safe JSON parser with explicit error handling and pattern matching
+/**
+ * ======== CORE FUNCTIONS ========
+ * These functions provide the core functionality of the framework.
+ */
+
+/**
+ * Safe JSON parser with explicit error handling.
+ * Attempts to parse the request body as JSON and handles any errors.
+ *
+ * @param request - The request object to parse
+ * @returns A Result containing either the parsed body or an error
+ */
 const safeParseBody = async (request: Request): Promise<Result<unknown, Error>> => {
   try {
     const contentType = request.headers.get("content-type");
@@ -251,7 +440,14 @@ const safeParseBody = async (request: Request): Promise<Result<unknown, Error>> 
   }
 };
 
-// Optimized middleware composition using mutable context
+/**
+ * Optimized middleware composition using mutable context.
+ * Composes an array of middleware functions into a single middleware function.
+ *
+ * @template T - The context type
+ * @param middlewares - Array of middleware functions to compose
+ * @returns A single middleware function that executes all middleware in sequence
+ */
 const compose = <T extends Context>(middlewares: Middleware<T>[]) =>
   async (ctx: T): Promise<void> => {
     let index = -1;
@@ -273,17 +469,47 @@ const compose = <T extends Context>(middlewares: Middleware<T>[]) =>
     await dispatch(0);
   };
 
-// ======== CONTEXT HELPERS ========
+/**
+ * ======== CONTEXT HELPERS ========
+ * These helper functions make it easier to work with the Context object.
+ */
+
+/**
+ * Sets a header on the context.
+ *
+ * @param ctx - The context to modify
+ * @param key - The header name
+ * @param value - The header value
+ * @returns The modified context for chaining
+ */
 export const setHeader = (ctx: Context, key: string, value: string): Context => {
   ctx.headers.set(key, value);
   return ctx;
 };
 
+/**
+ * Sets the response on the context.
+ *
+ * @param ctx - The context to modify
+ * @param response - The response object
+ * @returns The modified context for chaining
+ */
 export const setResponse = (ctx: Context, response: Response): Context => {
   ctx.response = response;
   return ctx;
 };
 
+/**
+ * Handles a Result object with success and failure handlers.
+ *
+ * @template T - The success value type
+ * @template E - The error type
+ * @template R - The return type
+ * @param result - The Result object to handle
+ * @param ctx - The context object
+ * @param handlers - Object with success and failure handler functions
+ * @returns The result of calling the appropriate handler
+ */
 export const handleResult = <T, E, R>(
   result: Result<T, E>,
   ctx: Context,
@@ -612,17 +838,88 @@ export const findTransition = (
 ): WorkflowTransition | undefined =>
   instance.definition.transitions.find(t => t.from === instance.currentState && t.on === event);
 
-// ======== APP FACTORY ========
-// App type definition
+/**
+ * ======== APP FACTORY ========
+ * The App factory is the main entry point for creating Mixon applications.
+ */
+
+/**
+ * App instance type definition.
+ * Represents a Mixon application with methods for routing, middleware, and server control.
+ */
 type AppInstance = {
+  /**
+   * Adds middleware to the application.
+   *
+   * @param middleware - The middleware function to add
+   * @returns The app instance for chaining
+   */
   use: (middleware: Middleware) => AppInstance;
+
+  /**
+   * Adds a GET route handler.
+   *
+   * @param path - The route path pattern
+   * @param handler - The handler function for this route
+   * @returns The app instance for chaining
+   */
   get: (path: string, handler: Handler) => AppInstance;
+
+  /**
+   * Adds a POST route handler.
+   *
+   * @param path - The route path pattern
+   * @param handler - The handler function for this route
+   * @returns The app instance for chaining
+   */
   post: (path: string, handler: Handler) => AppInstance;
+
+  /**
+   * Adds a PUT route handler.
+   *
+   * @param path - The route path pattern
+   * @param handler - The handler function for this route
+   * @returns The app instance for chaining
+   */
   put: (path: string, handler: Handler) => AppInstance;
+
+  /**
+   * Adds a PATCH route handler.
+   *
+   * @param path - The route path pattern
+   * @param handler - The handler function for this route
+   * @returns The app instance for chaining
+   */
   patch: (path: string, handler: Handler) => AppInstance;
+
+  /**
+   * Adds a DELETE route handler.
+   *
+   * @param path - The route path pattern
+   * @param handler - The handler function for this route
+   * @returns The app instance for chaining
+   */
   delete: (path: string, handler: Handler) => AppInstance;
+
+  /**
+   * Starts the HTTP server on the specified port and hostname.
+   *
+   * @param port - The port number to listen on
+   * @param hostname - The hostname to bind to (defaults to 0.0.0.0)
+   * @returns A promise that resolves when the server starts
+   */
   listen: (port: number, hostname?: string) => unknown;
-  workflow: () => unknown; // Using unknown instead of any
+
+  /**
+   * Creates a workflow engine for managing stateful workflows.
+   *
+   * @returns A workflow engine instance
+   */
+  workflow: () => unknown;
+
+  /**
+   * Utility functions for common tasks.
+   */
   utils: {
     createResponse: typeof createResponse;
     handleError: typeof handleError;
@@ -631,6 +928,38 @@ type AppInstance = {
   };
 };
 
+/**
+ * Creates a new Mixon application instance.
+ *
+ * The App function is the main entry point for creating a Mixon application.
+ * It returns an instance with methods for defining routes, adding middleware,
+ * and starting the server.
+ *
+ * @example
+ * ```typescript
+ * import { App } from "jsr:@srdjan/mixon";
+ *
+ * const app = App();
+ *
+ * // Add middleware
+ * app.use(async (ctx, next) => {
+ *   const start = Date.now();
+ *   await next();
+ *   const ms = Date.now() - start;
+ *   console.log(`${ctx.request.method} ${ctx.request.url} - ${ms}ms`);
+ * });
+ *
+ * // Define routes
+ * app.get("/hello", (ctx) => {
+ *   ctx.response = new Response("Hello World");
+ * });
+ *
+ * // Start the server
+ * app.listen(3000);
+ * ```
+ *
+ * @returns A new Mixon application instance
+ */
 export const App = (): AppInstance => {
   const middlewares: Middleware[] = [];
   const router = createRouter();
