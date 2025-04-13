@@ -1,4 +1,4 @@
-# Mixon Utility Functions
+# Utility Functions
 
 ## Overview
 

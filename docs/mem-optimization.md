@@ -1,4 +1,4 @@
-# Mixon Memory Optimization Guide
+# Memory Optimization Guide
 
 ## Introduction
 

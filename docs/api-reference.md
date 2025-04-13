@@ -1,4 +1,4 @@
-# Mixon API Reference
+# API Reference
 
 ## Core Concepts
 

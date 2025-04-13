@@ -1,4 +1,4 @@
-# Mixon Best Practices
+# Best Practices
 
 ## Core Principles
 

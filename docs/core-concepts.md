@@ -1,4 +1,4 @@
-# Mixon Documentation
+# Core Concepts
 
 ## Introduction
 

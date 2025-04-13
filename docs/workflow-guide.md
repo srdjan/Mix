@@ -1,4 +1,4 @@
-# Mixon Workflow Engine Guide
+# Workflow Engine Guide
 
 ## Introduction
 
