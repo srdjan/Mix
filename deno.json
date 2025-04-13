@@ -1,10 +1,24 @@
 {
   "name": "@srdjan/mixon",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "exports": "./mod.ts",
   "description": "Type-Safe API & Workflow Microframework for Deno",
   "readme": "./JSR.md",
   "license": "MIT",
+  "repository": "https://github.com/srdjan/Mixon",
+  "homepage": "https://github.com/srdjan/Mixon#readme",
+  "bugs": "https://github.com/srdjan/Mixon/issues",
+  "keywords": [
+    "deno",
+    "api",
+    "framework",
+    "typescript",
+    "rest",
+    "hateoas",
+    "workflow",
+    "htmx",
+    "state-machine"
+  ],
   "tasks": {
     "dev": "deno run --watch main.ts",
     "workflow": "deno run --allow-net --allow-read examples/workflow/workflow.tsx",
