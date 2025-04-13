@@ -236,16 +236,7 @@ export const Layout = ({ title, children }: LayoutProps) => (
       </div>
 
       <footer>
-        <p>
-          Built with{" "}
-          <a href="https://github.com/yourusername/Mixon">Mixon Framework</a>,
-          {" "}
-          <a href="https://htmx.org">HTMX</a>, and{" "}
-          <a href="https://nanojsx.io">Nano JSX</a>.
-        </p>
-        <p>
-          View the source code: <code>examples/workflow/workflow.tsx</code>
-        </p>
+        <p>Built with ❤️ by <a href="https://srdjan.github.io" target="_blank" rel="noopener noreferrer">⊣˚∆˚⊢</a></p>
       </footer>
 
       {/* HTMX event handling */}
