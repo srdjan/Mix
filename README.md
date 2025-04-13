@@ -10,18 +10,6 @@
 [![HTMX Version](https://img.shields.io/badge/htmx-2.0.4-green?logo=htmx)](https://htmx.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-```ts
-// Simple API Example
-const app = App();
-const { utils } = app;
-
-app.get("/hello", (ctx) => {
-  ctx.response = utils.createResponse(ctx, { message: "Hello World" });
-});
-
-app.listen(3000);
-```
-
 ## Features ✨
 
 - **Type-Safe Everything**
