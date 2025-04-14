@@ -1,10 +1,8 @@
 # Best Practices
 
-## Core Principles
-
 Mixon's architecture balances performance optimization with functional programming principles. These best practices will help you create efficient, maintainable, and type-safe Mixon applications.
 
-### Strategic Immutability
+## Strategic Immutability
 
 Embrace controlled mutation for performance-critical paths while preserving immutability for domain logic:
 
@@ -21,7 +19,7 @@ const calculateTotals = (items: OrderItem[]): OrderTotals => ({
 });
 ```
 
-### Type-Driven Development
+## Type-Driven Development
 
 Build your API from types outward, not the other way around:
 
@@ -52,7 +50,7 @@ app.post<{}, typeof userSchema.infer>("/users", async (ctx) => {
 });
 ```
 
-### Explicit Error Handling
+## Explicit Error Handling
 
 Always handle errors explicitly using Result types:
 
@@ -103,8 +101,6 @@ app.get<{ id: string }>("/users/:id", async (ctx) => {
 
 ## Application Structure
 
-### Module Organization
-
 Structure your application with clear boundaries:
 
 ```text
@@ -139,7 +135,7 @@ src/
 └── app.ts            # Application bootstrap
 ```
 
-### Domain-Driven Routes
+## Domain-Driven Routes
 
 Organize routes by domain resource:
 
@@ -181,7 +177,7 @@ registerProductRoutes(app);
 app.listen({ port: 3000 });
 ```
 
-### Middleware Composition
+## Middleware Composition
 
 Apply middleware strategically:
 
@@ -210,9 +206,7 @@ const conditionalAuth = (ctx, next) => {
 };
 ```
 
-## Type Safety
-
-### Exhaustive Pattern Matching
+## Exhaustive Pattern Matching
 
 Use pattern matching for exhaustive type checking:
 
@@ -242,7 +236,7 @@ const canModifyResource = (user: UserState, resourceOwnerId: string): boolean =>
     .otherwise(() => false);
 ```
 
-### Safe Type Narrowing
+## Safe Type Narrowing
 
 Prefer tagged unions and pattern matching over type assertions:
 
@@ -265,9 +259,7 @@ const processInput = (input: unknown) => {
 };
 ```
 
-## Performance Optimization
-
-### Strategic Data Copying
+## Strategic Data Copying
 
 Minimize object copying for performance-critical operations:
 
@@ -288,7 +280,7 @@ const processRequest = (ctx: Context) => {
 };
 ```
 
-### Lazy Evaluation
+## Lazy Evaluation
 
 Compute values only when needed:
 
@@ -326,7 +318,7 @@ const dashboardHandler = async (ctx: Context) => {
 };
 ```
 
-### Connection and Resource Pooling
+## Connection and Resource Pooling
 
 Manage expensive resources with pools:
 
@@ -353,8 +345,6 @@ app.use(async (ctx, next) => {
 ```
 
 ## Workflow Engine Patterns
-
-### Clean State Management
 
 Keep workflow state transitions clean and explicit:
 
@@ -396,7 +386,7 @@ const getOrderActions = (order: Order): string[] =>
     .exhaustive();
 ```
 
-### Event-Driven Processing
+## Event-Driven Processing
 
 Use workflow events to drive business processes:
 
@@ -483,9 +473,7 @@ orderWorkflow.createHandler("/orders/:id/events", async (ctx) => {
 });
 ```
 
-## Error Handling
-
-### Using Utility Functions
+## Using Utility Functions
 
 Mixon provides utility functions for consistent error handling and response creation:
 
@@ -516,7 +504,7 @@ app.get<{ id: string }>("/products/:id", (ctx): void => {
 });
 ```
 
-### Domain-Specific Errors
+## Domain-Specific Errors
 
 Define domain-specific error types:
 
@@ -584,7 +572,7 @@ const processOrder = async (order: Order): Promise<Result<Order, OrderError>> =>
 };
 ```
 
-### Status Code Mapping
+## Status Code Mapping
 
 Map domain errors to appropriate HTTP status codes and use the `handleError` utility:
 
@@ -630,9 +618,7 @@ app.post("/orders", (ctx): void => {
 });
 ```
 
-## Testing
-
-### Handler Testing
+## Handler Testing
 
 Write unit tests for handlers:
 
@@ -688,7 +674,7 @@ Deno.test("getUser - returns 404 when user not found", async () => {
 });
 ```
 
-### Integration Testing
+## Integration Testing
 
 Test your API endpoints:
 
@@ -729,9 +715,7 @@ Deno.addSignalListener("SIGINT", () => {
 });
 ```
 
-## Deployment
-
-### Environment Configuration
+## Environment Configuration
 
 Use environment variables for configuration:
 
@@ -764,7 +748,7 @@ if (config.environment === "production") {
 app.listen({ port: config.port });
 ```
 
-### Graceful Shutdown
+## Graceful Shutdown
 
 Implement proper cleanup on shutdown:
 
@@ -804,9 +788,7 @@ Deno.addSignalListener("SIGINT", shutdown);
 Deno.addSignalListener("SIGTERM", shutdown);
 ```
 
-## Security
-
-### Input Validation
+## Input Validation
 
 Always validate input data:
 
@@ -841,7 +823,7 @@ app.post("/login", async (ctx) => {
 });
 ```
 
-### Content Security
+## Content Security
 
 Set appropriate security headers:
 
@@ -859,9 +841,7 @@ app.use(async (ctx, next) => {
 });
 ```
 
-## Utility Functions
-
-### Consistent Response Formatting
+## Consistent Response Formatting
 
 Use the utility functions for consistent response formatting:
 
@@ -890,7 +870,7 @@ ctx.response = createResponse(ctx, results, {
 });
 ```
 
-### Type-Safe Handlers
+## Type-Safe Handlers
 
 Add explicit return type annotations to handlers for better type safety:
 

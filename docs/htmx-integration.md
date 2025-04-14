@@ -1,4 +1,4 @@
-# HTMX Integration with Mixon
+# HTMX Integration
 
 Mixon's content negotiation features work seamlessly with HTMX to create dynamic, interactive web applications with minimal JavaScript. This guide shows how to use HTMX with Mixon to build modern web interfaces.
 

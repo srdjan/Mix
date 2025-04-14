@@ -1,10 +1,8 @@
 # API Reference
 
-## Core Concepts
-
 Mixon is a minimalist, performance-optimized TypeScript framework for building APIs and workflow engines in Deno. It embraces strategic mutation for performance-critical paths while maintaining functional principles for business logic.
 
-### Key Design Principles
+## Key Design Principles
 
 - **Strategic Mutation**: Performance-critical paths use direct mutation
 - **Type Safety**: Comprehensive TypeScript types with perfect inference
@@ -12,7 +10,7 @@ Mixon is a minimalist, performance-optimized TypeScript framework for building A
 - **Result Types**: Explicit error handling with discriminated unions
 - **Minimal Dependencies**: Zero external runtime dependencies
 
-### Type System
+## Type System
 
 ```typescript
 // Result type for explicit error handling
@@ -44,9 +42,7 @@ type Middleware<T extends Context = Context> = (ctx: T, next: Next) => Promise<v
 type Handler<T extends Context = Context> = (ctx: T) => Promise<void> | void;
 ```
 
-## Application
-
-### Initialization
+## Application Initialization
 
 ```typescript
 import { App } from "jsr:@srdjan/mixon";
@@ -68,7 +64,7 @@ app.listen({
 app.close();
 ```
 
-### Route Registration
+## Route Registration
 
 ```typescript
 // Basic route handlers
@@ -92,7 +88,7 @@ app.put("/resources/:id", updateResourceHandler);
 app.delete("/resources/:id", deleteResourceHandler);
 ```
 
-### Middleware
+## Middleware
 
 ```typescript
 // Global middleware
@@ -123,7 +119,7 @@ app.get("/protected", authenticate, protectedResourceHandler);
 
 The Context object represents the request/response cycle and is designed for efficient in-place mutation.
 
-### Status and Headers
+## Status and Headers
 
 ```typescript
 // Set status code
@@ -143,7 +139,7 @@ utils.setHeader(ctx, "Location", `/resources/${id}`);
 utils.setResponse(ctx, utils.createResponse(ctx, data));
 ```
 
-### Response Creation
+## Response Creation
 
 ```typescript
 // Simple response
@@ -169,7 +165,7 @@ const response = utils.createResponse(ctx, data, {
 });
 ```
 
-### Error and Response Utilities
+## Error and Response Utilities
 
 ```typescript
 // Handle errors with consistent formatting
@@ -184,7 +180,7 @@ const links = utils.createLinks('resources', resourceId);
 
 Mixon uses ArkType for runtime validation with perfect TypeScript inference.
 
-### Schema Definition
+## Schema Definition
 
 ```typescript
 import { type, scope } from "jsr:@srdjan/mixon";
@@ -208,7 +204,7 @@ const productSchema = scope({
 type Product = typeof productSchema.infer;
 ```
 
-### Validation Usage
+## Validation Usage
 
 ```typescript
 // Validate incoming data
@@ -264,7 +260,7 @@ return match(result)
 
 Mixon includes a performance-optimized state machine for modeling business processes.
 
-### Workflow Definition
+## Workflow Definition
 
 ```typescript
 // Define workflow types
@@ -294,7 +290,7 @@ orderWorkflow.load({
 });
 ```
 
-### Workflow Operations
+## Workflow Operations
 
 ```typescript
 // Check if transition is possible
@@ -313,7 +309,7 @@ const tasks = utils.getPendingTasks(instance);
 utils.assignTask(instance, task);
 ```
 
-### Workflow Handler
+## Workflow Handler
 
 ```typescript
 orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
@@ -340,7 +336,7 @@ orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
 
 Mixon provides tools for monitoring and optimizing performance.
 
-### Memory Monitoring
+## Memory Monitoring
 
 ```typescript
 // Get memory usage
@@ -359,7 +355,7 @@ function formatBytes(bytes: number): string {
 }
 ```
 
-### Performance Measurement
+## Performance Measurement
 
 ```typescript
 // Measure execution time
@@ -474,9 +470,7 @@ app.get("/binary", (ctx) => {
 });
 ```
 
-## Advanced Patterns
-
-### Resource-Based Routing
+## Resource-Based Routing
 
 ```typescript
 // resource.ts
@@ -506,7 +500,7 @@ registerRoutes(app);
 app.listen({ port: 3000 });
 ```
 
-### Effect Management
+## Effect Management
 
 ```typescript
 // Pure effect descriptor

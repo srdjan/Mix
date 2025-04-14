@@ -4,9 +4,7 @@
 
 The Mixon Workflow Engine provides a type-safe, performance-optimized state machine implementation for modeling complex business processes. It enables you to define explicit state transitions, track history, and manage tasks associated with state changes.
 
-## Core Concepts
-
-### State Machines
+## State Machines
 
 At its core, the workflow engine is built on finite state machine principles:
 
@@ -15,7 +13,7 @@ At its core, the workflow engine is built on finite state machine principles:
 - **Transitions**: Rules defining how states change in response to events
 - **Tasks**: Actions to perform when transitions occur
 
-### Type Safety
+## Type Safety
 
 The workflow engine leverages TypeScript's type system to ensure type safety:
 
@@ -30,9 +28,7 @@ const orderWorkflow = app.workflow<OrderState, OrderEvent>();
 
 This provides compiler-level guarantees that your state transitions are valid.
 
-## Defining Workflows
-
-### Basic Definition
+## Basic Definition
 
 ```typescript
 // Create a workflow engine instance
@@ -62,7 +58,7 @@ orderWorkflow.load({
 });
 ```
 
-### Adding Tasks
+## Adding Tasks
 
 Tasks represent actions that should be performed when transitions occur:
 
@@ -93,7 +89,7 @@ orderWorkflow.load({
 });
 ```
 
-### Programmatic Definition
+## Programmatic Definition
 
 You can also define transitions programmatically:
 
@@ -124,9 +120,7 @@ orderWorkflow
   // Add more transitions...
 ```
 
-## Using Workflows
-
-### Creating Workflow Handlers
+## Creating Workflow Handlers
 
 The `createHandler` method creates specialized handlers for workflow-enabled endpoints:
 
@@ -140,7 +134,7 @@ orderWorkflow.createHandler("/orders/:id/transitions", async (ctx) => {
 });
 ```
 
-### Handling Transitions
+## Handling Transitions
 
 The optimized workflow API provides utilities for transitions:
 
@@ -185,7 +179,7 @@ orderWorkflow.createHandler("/orders/:id/transitions", (ctx) => {
 });
 ```
 
-### Task Management
+## Task Management
 
 Tasks attached to transitions can be processed after successful transitions:
 
@@ -231,9 +225,7 @@ orderWorkflow.createHandler("/orders/:id/transitions", (ctx) => {
 });
 ```
 
-## Advanced Patterns
-
-### Pattern Matching for State Handling
+## Pattern Matching for State Handling
 
 Use pattern matching for exhaustive state handling:
 
@@ -251,7 +243,7 @@ const getOrderActions = (instance: WorkflowInstance): string[] =>
     .exhaustive();
 ```
 
-### Workflow History
+## Workflow History
 
 The workflow instance maintains a history of transitions:
 
@@ -271,7 +263,7 @@ return utils.setResponse(ctx, utils.createResponse(ctx, {
 }));
 ```
 
-### Conditional Transitions
+## Conditional Transitions
 
 Implement business logic to control when transitions are allowed:
 
@@ -304,7 +296,7 @@ const canTransitionOrder = (
 };
 ```
 
-### Multiple Workflows
+## Multiple Workflows
 
 You can define multiple workflows for different domains:
 
@@ -325,9 +317,7 @@ orderWorkflow.createHandler("/orders/:id/transitions", handleOrderTransition);
 userWorkflow.createHandler("/users/:id/transitions", handleUserTransition);
 ```
 
-## Performance Optimization
-
-### Transition Lookup Optimization
+## Transition Lookup Optimization
 
 The workflow engine uses optimized lookups for transitions:
 
@@ -339,7 +329,7 @@ const findTransition = (instance: WorkflowInstance, event: Event): Transition | 
 };
 ```
 
-### Batch Processing
+## Batch Processing
 
 For high-throughput scenarios, process transitions in batches:
 
@@ -403,9 +393,7 @@ const processOrderBatch = async (
 };
 ```
 
-## Error Handling
-
-### Transition Errors
+## Transition Errors
 
 Handle transition errors explicitly:
 
@@ -460,7 +448,7 @@ const applyTransitionSafe = (
 };
 ```
 
-### Task Errors
+## Task Errors
 
 Handle task processing errors:
 
@@ -496,9 +484,7 @@ const processTaskSafe = async (
 };
 ```
 
-## Persistence
-
-### Workflow Definition Persistence
+## Workflow Definition Persistence
 
 Save and load workflow definitions:
 
@@ -534,7 +520,7 @@ if (savedDefinition) {
 }
 ```
 
-### Instance Persistence
+## Instance Persistence
 
 Persist workflow instances with your business entities:
 
