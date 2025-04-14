@@ -61,11 +61,10 @@
     const dts = document.querySelectorAll('dt');
     dts.forEach(dt => dt.addEventListener('click', highlight, false));
     function highlight(e) {
-      // add border to selection
-      dts.forEach(item => item.classList.remove('dd-border'));
+      dts.forEach(item => item.classList.remove('dt-border'));
       let id = e.target.dataset.id;
       let dt = document.querySelector(`dt[data-id="${id}"]`);
-      dt.classList.add('dd-border');
+      dt.classList.add('dt-border');
 
       // change article content
       let zeromd = document.getElementById('app')
