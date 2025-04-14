@@ -66,14 +66,12 @@ p {
 
 a {
   color: #2a2c30;
-  text-decoration: underline;
-  text-decoration-color: #dedfdf;
-  text-decoration-thickness: 2px;
+  text-decoration: none;
 }
 
 a:focus,
 a:hover {
-  text-decoration-color: #9a9ab7;
+  color: #9a9ab7;
   cursor: pointer;
 }
 
