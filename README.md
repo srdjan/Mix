@@ -58,18 +58,6 @@ import { App } from "jsr:@srdjan/mixon";
 import { App, type, match } from "jsr:@srdjan/mixon";
 ```
 
-### Import from Deno.land
-
-You can also import Mixon directly from Deno.land (once published):
-
-```typescript
-// Import the latest version
-import { App } from "https://deno.land/x/mixon/mod.ts";
-
-// Or import a specific version
-import { App, type, match } from "https://deno.land/x/mixon@v1.0.0/mod.ts";
-```
-
 ### Clone the Repository
 
 To get started with the examples and have the full source code:
