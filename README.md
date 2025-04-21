@@ -42,18 +42,9 @@ Mixon is designed for Deno, making installation straightforward with no package 
 ### Prerequisites
 
 - [Deno](https://deno.land/) v2.0 or higher
-
-### Direct Import
-
-The simplest way to use Mixon is to import it directly from your project:
-
-```typescript
-// Import from local path
-import { App } from "jsr:@srdjan/mixon";
-
-// Or import specific utilities
-import { App, type, match } from "jsr:@srdjan/mixon";
-```
+- [HTMX](https://htmx.org) (optional, for interactive UIs)
+- [ArkType](https://arktype.io) (optional, for runtime type validation)
+- [Nano JSX](https://github.com/srdjan/nano-jsx) (optional, for server-side rendering)
 
 ### Import from JSR (Recommended)
 
